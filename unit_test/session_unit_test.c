@@ -1,7 +1,7 @@
 #include <jansson.h>
 #include "session.h"
 
-#define JSON_FILE "./log.json"
+#define JSON_FILE "./component_unit_test_log.json"
 
 int main() 
 {
