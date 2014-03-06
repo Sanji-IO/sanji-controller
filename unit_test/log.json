@@ -1,0 +1,18 @@
+[
+	{
+		"code": 200,
+		"data": {
+			"ip": "127.0.0.1",
+			"netmask": "255.0.0.0"
+		}
+	}, {
+		"code": 500,
+		"data": {
+			"message": "something wrong",
+			"log": [
+				"setup is wrong"
+			]
+		}
+	}
+]
+
