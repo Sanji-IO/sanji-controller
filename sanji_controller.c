@@ -525,11 +525,15 @@ int sanji_register_procedure(
 
 	case RESOURCE_METHOD_READ:
 		DEBUG_PRINT("read method");
+
+		DEBUG_PRINT("read method is not implemented.");
 		sanji_register_response_error(mosq, obj, root, _tunnel, SESSION_CODE_METHOD_NOT_ALLOWED);
 		break;
 
 	case RESOURCE_METHOD_UPDATE:
 		DEBUG_PRINT("update method");
+
+		DEBUG_PRINT("update method is not implemented.");
 		sanji_register_response_error(mosq, obj, root, _tunnel, SESSION_CODE_METHOD_NOT_ALLOWED);
 		break;
 
@@ -1047,6 +1051,7 @@ int main(int argc, char *argv[])
 	struct mosquitto *mosq = NULL;
 	struct sanji_userdata *ud = NULL;
 	char sanji_register_topic[] = SANJI_REGISTER_TOPIC;
+	char sanji_controller_topic[] = SANJI_CONTROLLER_TOPIC;
 	bool clean_session = true;
 	bool debug = false;
 	char err[SANJI_ERR_BUFSIZE];
@@ -1078,6 +1083,9 @@ int main(int argc, char *argv[])
 	ud->topic_count++;
 	ud->topics = realloc(ud->topics, ud->topic_count*sizeof(char *));
 	ud->topics[ud->topic_count-1] = sanji_register_topic;
+	ud->topic_count++;
+	ud->topics = realloc(ud->topics, ud->topic_count*sizeof(char *));
+	ud->topics[ud->topic_count-1] = sanji_controller_topic;
 
 	/* default publish configuration */
 	ud->qos_sent = 2;
