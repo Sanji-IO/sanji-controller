@@ -1,0 +1,15 @@
+{
+	"id" : 1,
+	"method" : "POST",
+	"resource" : "/controller/registration",
+	"data" : {
+		"name": "eth1",
+		"description": "eth1_desc",
+		"tunnel": "eth1_tun",
+		"role": "model",
+		"ttl": 100,
+		"resource": [
+			"/network/ethernet/eth1"
+			]
+	}
+}

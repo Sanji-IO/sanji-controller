@@ -1,0 +1,10 @@
+{
+	"id" : 1,
+	"method" : "PUT",
+	"resource" : "/network/ethernet/eth1",
+	"code" : 200,
+	"data" : {
+		"name": "ipsec",
+		"ip tunnel" : "10.0.0.1"
+	}
+}

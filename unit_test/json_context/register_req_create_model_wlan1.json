@@ -1,0 +1,15 @@
+{
+	"id" : 2,
+	"method" : "POST",
+	"resource" : "/controller/registration",
+	"data" : {
+		"name": "wlan1",
+		"description": "wlan1_desc",
+		"tunnel": "wlan1_tun",
+		"role": "model",
+		"ttl": 100,
+		"resource": [
+			"/network/ethernet/wlan1"
+			]
+	}
+}
