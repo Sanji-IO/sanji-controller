@@ -9,12 +9,11 @@ extern "C" {
 /*
  * SANJI Error Codes
  */
-#define SANJI_DATA_ERROR	(-1)
-#define SANJI_SUCCESS		0
-#define SANJI_LOCKED		1
-#define SANJI_NOT_FOUND		2
-#define SANJI_UNAVAILABLE	3
-
+#define SANJI_INTERNAL_ERROR	(-2)	// SERVER ERROR: out of memory, unknown crash
+#define SANJI_DATA_ERROR		(-1)	// DATA ERROR: invalid data
+#define SANJI_SUCCESS			0
+#define SANJI_LOCKED			1
+#define SANJI_NOT_FOUND			2
 
 #ifdef __cplusplus
 }
