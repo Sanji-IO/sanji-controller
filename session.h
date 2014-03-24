@@ -29,6 +29,9 @@ extern "C" {
 #define SESSION_CODE_NOT_IMPLEMENTED		HTTP_NOT_IMPLEMENTED
 #define SESSION_CODE_SERVICE_UNAVAILABLE	HTTP_SERVICE_UNAVAILABLE
 
+#define SESSION_MAX_ID 4294967295
+#define SESSION_MIN_ID 1
+
 struct model_chain {
 	char *models;
 	unsigned int count;
@@ -37,7 +40,7 @@ struct model_chain {
 
 struct session {
 	struct list_head list;
-	int id;
+	unsigned int id;
 	int method;
 	char resource[RESOURCE_NAME_LEN];
 	json_t *result_chain;	// include 'code' and 'data'
@@ -50,18 +53,18 @@ struct session {
 };
 
 struct session *session_init();
-struct session *session_create_node(int, int, char *, json_t *, struct model_chain *, unsigned int, char *, unsigned int);
+struct session *session_create_node(unsigned int, int, char *, json_t *, struct model_chain *, unsigned int, char *, unsigned int);
 int session_add(struct session *, struct session *);
-int session_add_node(struct session *, int, int, char *, json_t *, struct model_chain *, unsigned int, char *, unsigned int);
-struct session *session_lookup_node_by_id(struct session *, int);
+int session_add_node(struct session *, unsigned int, int, char *, json_t *, struct model_chain *, unsigned int, char *, unsigned int);
+struct session *session_lookup_node_by_id(struct session *, unsigned int);
 void session_display(struct session *);
 void session_display_model_chain(struct model_chain *, unsigned int);
 void session_display_view_chain(char *, unsigned int);
 int session_delete_first_resource(struct session *, char *);
-int session_delete_first_id(struct session *, int);
+int session_delete_first_id(struct session *, unsigned int);
 
 /* inspect method */
-int session_is_inflight(struct session *, int);
+int session_is_inflight(struct session *, unsigned int);
 
 /* lock method */
 int session_node_lock_by_step(struct session *, struct resource *, struct component *, unsigned int);

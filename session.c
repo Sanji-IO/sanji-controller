@@ -17,7 +17,7 @@ struct session *session_init()
 }
 
 struct session *session_create_node(
-		int id,
+		unsigned int id,
 		int method,
 		char *resource,
 		json_t *result_chain,
@@ -65,7 +65,7 @@ int session_add(struct session *head, struct session *node)
 
 int session_add_node(
 		struct session *head,
-		int id,
+		unsigned int id,
 		int method,
 		char *resource,
 		json_t *result_chain,
@@ -91,7 +91,7 @@ int session_add_node(
 	return session_add(head, node);
 }
 
-struct session *session_lookup_node_by_id(struct session *head, int id)
+struct session *session_lookup_node_by_id(struct session *head, unsigned int id)
 {
 	struct session *curr = NULL;
 
@@ -143,7 +143,7 @@ void session_display(struct session *head)
 	if (head) {
 		list_for_each_entry(curr, &head->list, list) {
 			fprintf(stderr, "session node(%d):\n", i++);
-			fprintf(stderr, "\tid(%d)\n", curr->id);
+			fprintf(stderr, "\tid(%u)\n", curr->id);
 			fprintf(stderr, "\tmethod(%d)\n", curr->method);
 			fprintf(stderr, "\tresource(%s)\n", curr->resource);
 			/* display result chain */
@@ -220,7 +220,7 @@ int session_delete_first_resource(struct session *head, char *resource)
 	return 0;
 }
 
-int session_delete_first_id(struct session *head, int id)
+int session_delete_first_id(struct session *head, unsigned int id)
 {
 	struct session *curr = NULL;
 
@@ -243,7 +243,7 @@ int session_delete_first_id(struct session *head, int id)
 	return 0;
 }
 
-int session_is_inflight(struct session *head, int id)
+int session_is_inflight(struct session *head, unsigned int id)
 {
 	struct session *curr = NULL;
 
@@ -297,7 +297,7 @@ int session_node_unlock_by_step(struct session *node, struct resource *resource_
 		}
 	}
 
-	return 0;
+	return SANJI_SUCCESS;
 }
 
 int session_node_lock_by_step(struct session *node, struct resource *resource_list, struct component *component_list, unsigned int step)
@@ -336,7 +336,7 @@ int session_node_lock_by_step(struct session *node, struct resource *resource_li
 		}
 	}
 
-	return 0;
+	return SANJI_SUCCESS;
 }
 
 void session_node_update_wait(struct session *node)
@@ -354,6 +354,7 @@ void session_node_decref_wait(struct session *node, struct session *session_list
 	if (!node) return;
 
 	node->curr_wait--;
+	DEBUG_PRINT("session(%d) get response at step(%d/%d), left wait(%d).", node->id, node->curr_step, node->model_chain_count, node->curr_wait);
 
 	/* move to next step */
 	if (node->curr_wait <= 0) {
@@ -374,7 +375,9 @@ int session_step_stop(
 	char *view = NULL;
 	char *tunnel = NULL;
 	json_t *result = NULL;
+#if 0 // Merge result
 	json_t *data = NULL;
+#endif
 	json_t *result_data = NULL;
 	json_t *root_data = NULL;
 	char *packet_context = NULL;
@@ -387,6 +390,7 @@ int session_step_stop(
 		 * sesion success:
 		 *   append/update all 'data'
 		 */
+		DEBUG_PRINT("session(%d) successd with total step(%d).", node->id, node->model_chain_count);
 		if (node->result_chain && json_is_array(node->result_chain)) {
 			for (i = 0; i < json_array_size(node->result_chain); i++) {
 				result = json_array_get(node->result_chain, i);
@@ -398,21 +402,25 @@ int session_step_stop(
 			}
 		}
 	} else {
+		DEBUG_PRINT("session(%d) failed at step(%d/%d), at wait(%d).", node->id, node->curr_step, node->model_chain_count, node->curr_wait);
 		/*
 		 * sesion fail:
 		 *   merge return 'code', write 'log' and 'message'
 		 */
+#if 0 // Merge result
 		json_object_del(root, "data");
 		data = json_object();
 		json_object_set_new(data, "message", json_string("failed to operate the resource, please see log for more details."));
 		json_object_set(data, "log", node->result_chain);
 		json_object_set_new(root, "data", data);
+#else
+#endif
 	}
 
 	packet_context = json_dumps(root, JSON_INDENT(4));
 	if (!packet_context) {
 		DEBUG_PRINT("Error: out of memory");
-		return SANJI_UNAVAILABLE;
+		return SANJI_INTERNAL_ERROR;
 	}
 	packet_context_len = strlen(packet_context);
 
@@ -422,9 +430,9 @@ int session_step_stop(
 		view = node->view_chain + i * COMPONENT_NAME_LEN;
 		tunnel = component_get_tunnel_by_name(component_list, view);
 		DEBUG_PRINT("session(%d) sends to view(%s) with tunnel(%s).", node->id, view, tunnel);
-		DEBUG_PRINT("%s", packet_context);
 		mosquitto_publish(mosq, &ud->mid_sent, tunnel, packet_context_len, packet_context, ud->qos_sent, ud->retain_sent);
 	}
+	DEBUG_PRINT("%s", packet_context);
 	free(packet_context);
 
 	/* unlock all related resource/models for write-like method */
@@ -435,7 +443,12 @@ int session_step_stop(
 	/* free session */
 	session_delete_first_id(session_list, node->id);
 
-	return 0;
+#if (defined DEBUG) || (defined VERBOSE)
+	DEBUG_PRINT("dump sessions:");
+	session_display(session_list);
+#endif
+
+	return SANJI_SUCCESS;
 }
 
 int session_step(
@@ -471,7 +484,7 @@ int session_step(
 	/* update wait for this step */
 	session_node_update_wait(node);
 
-	/* dump packet context from json object 'root' and node->result_chain */
+	/* dump all 'data' from node->result_chain to json object 'root' */
 	if (node->curr_step != 1) {
 		/* append/update all 'data' */
 		if (node->result_chain && json_is_array(node->result_chain)) {
@@ -488,10 +501,11 @@ int session_step(
 		json_object_del(root, "code");
 	}
 
+	/* dump packet context from json object 'root' */
 	packet_context = json_dumps(root, JSON_INDENT(4));
 	if (!packet_context) {
 		DEBUG_PRINT("Error: out of memory");
-		return SANJI_UNAVAILABLE;
+		return SANJI_INTERNAL_ERROR;
 	}
 	packet_context_len = strlen(packet_context);
 
@@ -502,9 +516,9 @@ int session_step(
 		model = model_chain->models + i * COMPONENT_NAME_LEN;
 		tunnel = component_get_tunnel_by_name(component_list, model);
 		DEBUG_PRINT("session(%d) on step(%d/%d) sends to model(%s) with tunnel(%s) in wait(%d/%d)", node->id, node->curr_step, node->model_chain_count, model, tunnel, i + 1, node->curr_wait);
-		DEBUG_PRINT("%s", packet_context);
 		mosquitto_publish(mosq, &ud->mid_sent, tunnel, packet_context_len, packet_context, ud->qos_sent, ud->retain_sent);
 	}
+	DEBUG_PRINT("%s", packet_context);
 	free(packet_context);
 
 	return SANJI_SUCCESS;
