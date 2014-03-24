@@ -11,19 +11,21 @@ extern "C" {
  * ##########################
  */
 #define SANJI_VERSION "1.0.0"
-#define SANJI_ERR_BUFSIZE 256
 #define SANJI_HOSTNAME_BUFSIZE 256
 #define SANJI_IP_LEN 16
 #define SANJI_ID_LEN (MOSQ_MQTT_ID_MAX_LENGTH + 32)
+#define SANJI_MESSAGE_LEN 256
 
 /* mode of random number generator */
 #define SANJI_RAND_MODE_SEQ 0
 #define SANJI_RAND_MODE_RANDOM 1
 
 /* controller topics */
-#define SANJI_CONTROLLER_TOPIC "/controller"
-#define SANJI_REGISTER_TOPIC "/controller/registration"
 #define SANJI_REGISTER_TOPIC_LEN 24
+#define SANJI_CONTROLLER_TOPIC "/controller"
+#define SANJI_CONTROLLER_ALL_TOPIC "/controller/#"
+#define SANJI_REGISTER_TOPIC "/controller/registration"
+#define SANJI_REGISTER_ALL_TOPIC "/controller/registration/#"
 
 /* sanji configurations */
 #define SANJI_REFRESH_INTERVAL 1000
@@ -45,13 +47,14 @@ extern "C" {
  * mosquitto_new().
  */
 struct sanji_userdata {
+	char client_id[SANJI_ID_LEN];
 	char **topics;
 	int topic_count;
 	int topic_qos;
+	int *topic_mids;
 	char *username;
 	char *password;
 	int verbose;
-	bool quiet;
 	bool no_retain;
 	int qos_sent;
 	int retain_sent;
