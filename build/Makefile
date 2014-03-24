@@ -8,10 +8,16 @@ EXEC = sanji_controller
 SRCS = sanji_controller.c resource.c component.c session.c
 OBJS = $(SRCS:.c=.o)
 
-DEBUG = yes
+VERBOSE = yes
+ifdef VERBOSE
+CFLAGS += -DVERBOSE
+endif
+
+#DEBUG = yes
 ifdef DEBUG
 CFLAGS += -DDEBUG
 endif
+
 
 .PHONY: all clean
 
