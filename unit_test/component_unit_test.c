@@ -41,6 +41,12 @@ int main()
 	fprintf(stderr, "n_aaa is registerd? (%d)\n", component_is_registered(component, "n_aaa"));
 	fprintf(stderr, "n_bbb is registerd? (%d)\n", component_is_registered(component, "n_bbb"));
 
+	/* is unique tunnel */
+	fprintf(stderr, "t_aaa is unique? (%d)\n", component_is_unique_tunnel(component, "t_aaa"));
+	fprintf(stderr, "t_bbb is unique? (%d)\n", component_is_unique_tunnel(component, "t_bbb"));
+	fprintf(stderr, "t_ccc is unique? (%d)\n", component_is_unique_tunnel(component, "t_ccc"));
+	fprintf(stderr, "t_ddd is unique? (%d)\n", component_is_unique_tunnel(component, "t_ddd"));
+
 	/* append component by name */
 	component_append_hook_by_name(component, "n_ccc", "h_ccc_append1");
 	component_append_hook_by_name(component, "n_ccc", "h_ccc_append2");
