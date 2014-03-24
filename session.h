@@ -83,6 +83,8 @@ int session_step(struct session *, struct session *, struct resource *, struct c
 void session_step_update(struct session *, struct session *, struct resource *, struct component *, struct mosquitto *, void *, json_t *, int, json_t *);
 int session_step_stop(struct session *,	struct session *, struct resource *, struct component *, struct mosquitto *, void *, json_t *);
 
+/* ttl method */
+void session_decref_ttl(struct session *, struct resource *, struct component *, struct mosquitto *, void *, unsigned int);
 
 
 #ifdef __cplusplus

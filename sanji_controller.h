@@ -16,6 +16,12 @@ extern "C" {
 #define SANJI_ID_LEN (MOSQ_MQTT_ID_MAX_LENGTH + 32)
 #define SANJI_MESSAGE_LEN 256
 
+/* mode of timestamp */
+#define SANJI_TIMESTAMP_LEN 32
+#define SANJI_TIMESTAMP_MODE_MONOTONIC 0
+#define SANJI_TIMESTAMP_MODE_UNIXTIME 1
+#define SANJI_TIMESTAMP_MODE_DATETIME 2
+
 /* mode of random number generator */
 #define SANJI_RAND_MODE_SEQ 0
 #define SANJI_RAND_MODE_RANDOM 1

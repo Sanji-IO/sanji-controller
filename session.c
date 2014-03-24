@@ -375,22 +375,18 @@ int session_step_stop(
 	char *view = NULL;
 	char *tunnel = NULL;
 	json_t *result = NULL;
-#if 0 // Merge result
 	json_t *data = NULL;
-#endif
 	json_t *result_data = NULL;
 	json_t *root_data = NULL;
+	json_t *response_root = NULL;
 	char *packet_context = NULL;
 	int packet_context_len;
 	int i;
 
 	/* dump packet context from json object 'root' and node->result_chain */
 	if (node->curr_step > node->model_chain_count) {
-		/*
-		 * sesion success:
-		 *   append/update all 'data'
-		 */
-		DEBUG_PRINT("session(%d) successd with total step(%d).", node->id, node->model_chain_count);
+		 /* sesion success: append/update all 'data' */
+		DEBUG_PRINT("session(%d) succeed with total step(%d).", node->id, node->model_chain_count);
 		if (node->result_chain && json_is_array(node->result_chain)) {
 			for (i = 0; i < json_array_size(node->result_chain); i++) {
 				result = json_array_get(node->result_chain, i);
@@ -401,12 +397,22 @@ int session_step_stop(
 				}
 			}
 		}
+		response_root = root;
+
+	} else if (!root) {
+		/* sesion fail due to ttl: add 'code', 'id' */
+		DEBUG_PRINT("session(%d) failed due to ttl expired.", node->id);
+
+		/* must free 'response_root' later */
+		response_root = json_object();
+		json_object_set_new(response_root, "code", json_integer(HTTP_REQUEST_TIME_OUT));
+		data = json_object();
+		json_object_set_new(data, "message", json_string("session failed due to ttl expired ."));
+		json_object_set_new(response_root, "data", data);
+
 	} else {
 		DEBUG_PRINT("session(%d) failed at step(%d/%d), at wait(%d).", node->id, node->curr_step, node->model_chain_count, node->curr_wait);
-		/*
-		 * sesion fail:
-		 *   merge return 'code', write 'log' and 'message'
-		 */
+		/* sesion fail: merge return 'code', write 'log' and 'message' */
 #if 0 // Merge result
 		json_object_del(root, "data");
 		data = json_object();
@@ -415,13 +421,15 @@ int session_step_stop(
 		json_object_set_new(root, "data", data);
 #else
 #endif
+		response_root = root;
 	}
 
-	packet_context = json_dumps(root, JSON_INDENT(4));
+	packet_context = json_dumps(response_root, JSON_INDENT(4));
 	if (!packet_context) {
 		DEBUG_PRINT("Error: out of memory");
 		return SANJI_INTERNAL_ERROR;
 	}
+	if (!root) json_decref(response_root);
 	packet_context_len = strlen(packet_context);
 
 	/* publish to all views */
@@ -548,5 +556,38 @@ void session_step_update(struct session *node,
 	} else {
 		session_step_stop(node, session_list, resource_list, component_list, mosq, obj, root);
 	}
+}
+
+void session_decref_ttl(struct session *session_list, struct resource *resource_list, struct component *component_list, struct mosquitto *mosq, void *obj, unsigned int pass_time)
+{
+	struct session *curr = NULL;
+	struct model_chain *model_chain = NULL;
+	struct session **flush_list = NULL;
+	int flush_count = 0;
+	int i;
+
+	if (!session_list) return;
+
+	/* decref ttl */
+	list_for_each_entry(curr, &session_list->list, list) {
+		model_chain = &curr->model_chain[curr->curr_step - 1];
+		for (i = 0; i < model_chain->count; i++) {
+			model_chain->ttls[i] -= pass_time;
+			if (model_chain->ttls[i] <= 0) {
+				DEBUG_PRINT("session(%d) will be flushed due to expired ttl.", curr->id);
+				flush_count++;
+				flush_list = realloc(flush_list, flush_count * sizeof(struct session *));
+				flush_list[flush_count - 1] = curr;
+				break;
+			}
+		}
+	}
+
+	/* flush expired session */
+	for (i = 0; i < flush_count; i++) {
+		session_step_stop(flush_list[i], session_list, resource_list, component_list, mosq, obj, NULL);
+	}
+	if (flush_list) free(flush_list);
+
 }
 
