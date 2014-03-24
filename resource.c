@@ -123,41 +123,49 @@ int resource_lookup_method(const char *method)
 	   into this code is fine, or simply re-running the shilka tool on
 	   the appropriate input. */
 
+	char method_upper[RESOURCE_METHOD_LEN];
   	unsigned int method_len;
+	int i;
 
 	if (!method) return RESOURCE_METHOD_UNKNOWN;
 	method_len = strlen(method);
 
+	/* to upper case */
+	memset(method_upper, '\0', RESOURCE_METHOD_LEN);
+	for (i = 0; method[i]; i++) {
+		method_upper[i] = toupper(method[i]);
+	}
+
 	switch (method_len) {
 	case 3:
-		switch (method[0]) {
+		switch (method_upper[0]) {
 		case 'P':
-			return (method[1] == 'U'
-					&& method[2] == 'T'
+			return (method_upper[1] == 'U'
+					&& method_upper[2] == 'T'
 					? RESOURCE_METHOD_UPDATE : RESOURCE_METHOD_UNKNOWN);
 		case 'G':
-			return (method[1] == 'E'
-					&& method[2] == 'T'
+			return (method_upper[1] == 'E'
+					&& method_upper[2] == 'T'
 					? RESOURCE_METHOD_READ : RESOURCE_METHOD_UNKNOWN);
 		default:
 			return RESOURCE_METHOD_UNKNOWN;
 		}
 
 	case 4:
-		switch (method[0]) {
+		switch (method_upper[0]) {
 		case 'P':
-			return (method[1] == 'O'
-					&& method[2] == 'S'
-					&& method[3] == 'T'
+			return (method_upper[1] == 'O'
+					&& method_upper[2] == 'S'
+					&& method_upper[3] == 'T'
 					? RESOURCE_METHOD_CREATE : RESOURCE_METHOD_UNKNOWN);
 		default:
 			return RESOURCE_METHOD_UNKNOWN;
 		}
 
 	case 6:
-		switch (method[0]) {
+		switch (method_upper[0]) {
 		case 'D':
-			return (memcmp(method, "DELETE", 6) == 0
+			return (memcmp(method_upper, "DELETE", 6) == 0
 					? RESOURCE_METHOD_DELETE : RESOURCE_METHOD_UNKNOWN);
 		default:
 			return RESOURCE_METHOD_UNKNOWN;

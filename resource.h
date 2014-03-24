@@ -8,6 +8,7 @@ extern "C" {
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include "http.h"
 #include "list.h"
 #include "debug.h"
@@ -22,7 +23,7 @@ extern "C" {
 #define RESOURCE_METHOD_DELETE	HTTP_M_DELETE
 
 #define RESOURCE_NAME_LEN 256
-#define RESOURCE_METHOD_LEN 16
+#define RESOURCE_METHOD_LEN 8
 
 struct resource {
 	struct list_head list;
