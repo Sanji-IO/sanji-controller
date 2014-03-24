@@ -60,13 +60,14 @@ void mqtt_message_callback(struct mosquitto *mosq, void *obj, const struct mosqu
 
 	if(ud->verbose){
 		if(message->payloadlen){
-			printf("%s ", message->topic);
-			fwrite(message->payload, 1, message->payloadlen, stdout);
-			printf("\n");
+			fprintf(stderr, "============================================================\n", message->topic);
+			fprintf(stderr, "[%s]\n\n", message->topic);
+			fprintf(stderr, "%s\n\n", message->payload);
 		}else{
-			printf("%s (null)\n", message->topic);
+			fprintf(stderr, "============================================================\n", message->topic);
+			fprintf(stderr, "[%s]\n\n", message->topic);
+			fprintf(stderr, "(null)\n\n");
 		}
-		fflush(stdout);
 	}else{
 		if(message->payloadlen){
 			fwrite(message->payload, 1, message->payloadlen, stdout);
