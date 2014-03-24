@@ -8,7 +8,7 @@
 		"tunnel": "veth1_tun",
 		"role": "view",
 		"ttl": 100,
-		"resource": [
+		"resources": [
 			"/network/ethernet/eth1"
 			]
 	}

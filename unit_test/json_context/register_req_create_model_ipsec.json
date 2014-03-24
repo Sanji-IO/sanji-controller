@@ -8,10 +8,8 @@
 		"tunnel": "ipsec_tun",
 		"role": "model",
 		"ttl": 100,
-		"hook": [
-			"eth1"
-			],
-		"resource": [
+		"hook": "eth1",
+		"resources": [
 			"/network/ethernet/ipsec"
 			]
 	}

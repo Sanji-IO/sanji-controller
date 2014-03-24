@@ -1,5 +1,5 @@
 {
 	"id" : 5,
 	"method" : "DELETE",
-	"resource" : "/controller/registration/v_eth1"
+	"resource" : "/controller/registration/veth1"
 }

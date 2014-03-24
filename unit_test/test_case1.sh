@@ -5,7 +5,7 @@ source test_case_config
 ###################################################
 # Test Items:
 #	1. Basic CRUD method of register resource
-#	2. Some error exception handler
+#	2. Some error exception
 #		- double create
 #		- delete empty
 ###################################################

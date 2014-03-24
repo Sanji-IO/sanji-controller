@@ -1,6 +1,6 @@
 {
 	"id" : 1,
-	"method" : "POST",
+	"method" : "pOsT",
 	"resource" : "/controller/registration",
 	"data" : {
 		"name": "eth1",
@@ -8,7 +8,7 @@
 		"tunnel": "eth1_tun",
 		"role": "model",
 		"ttl": 100,
-		"resource": [
+		"resources": [
 			"/network/ethernet/eth1"
 			]
 	}
