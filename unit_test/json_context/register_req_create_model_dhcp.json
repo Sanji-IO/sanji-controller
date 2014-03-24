@@ -7,7 +7,7 @@
 		"description": "dhcp_desc",
 		"tunnel": "dhcp_tun",
 		"role": "model",
-		"ttl": 100,
+		"ttl": 10,
 		"hook" : "eth1",
 		"resources": [
 			"/network/ethernet/dhcp"

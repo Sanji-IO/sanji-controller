@@ -7,7 +7,7 @@
 		"description": "eth1_desc",
 		"tunnel": "eth1_tun",
 		"role": "model",
-		"ttl": 100,
+		"ttl": 10,
 		"resources": [
 			"/network/ethernet/eth1"
 			]

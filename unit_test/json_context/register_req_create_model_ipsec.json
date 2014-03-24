@@ -7,7 +7,7 @@
 		"description": "ipsec_desc",
 		"tunnel": "ipsec_tun",
 		"role": "model",
-		"ttl": 100,
+		"ttl": 11,
 		"hook": "eth1",
 		"resources": [
 			"/network/ethernet/ipsec"

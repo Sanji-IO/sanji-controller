@@ -7,7 +7,7 @@
 		"description": "wlan1_desc",
 		"tunnel": "wlan1_tun",
 		"role": "model",
-		"ttl": 100,
+		"ttl": 15,
 		"resources": [
 			"/network/ethernet/wlan1"
 			]
