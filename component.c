@@ -178,6 +178,19 @@ int component_node_is_given_role(struct component *node, char *role)
 	return 0;
 }
 
+int component_is_unique_tunnel(struct component *head, char *tunnel)
+{
+	struct component *curr = NULL;
+
+	if (!head || !tunnel) return 0;
+
+	list_for_each_entry(curr, &head->list, list) {
+		if (!strcmp(curr->tunnel, tunnel)) return 0;
+	}
+
+	return 1;
+}
+
 int component_append_hook_by_name(struct component *head, char *name, char *hook)
 {
 	struct component *curr = NULL;

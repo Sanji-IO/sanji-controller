@@ -14,7 +14,7 @@ extern "C" {
 
 #define COMPONENT_NAME_LEN 32
 #define COMPONENT_DESCRIPTION_LEN 256
-#define COMPONENT_TUNNEL_LEN 16
+#define COMPONENT_TUNNEL_LEN 64
 #define COMPONENT_ROLE_LEN 16
 
 struct component {
@@ -50,6 +50,7 @@ int component_is_locked(struct component *, char *);
 int component_node_is_locked(struct component *);
 int component_is_given_role(struct component *, char *, char *);
 int component_node_is_given_role(struct component *, char *);
+int component_is_unique_tunnel(struct component *, char *);
 
 /* get method */
 char *component_node_get_hook(struct component *);
