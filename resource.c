@@ -385,8 +385,9 @@ int resource_remove_component_by_name(struct resource *head, char *name, char *s
 int resource_remove_all_component_by_name(struct resource *head, char *subscribed_component)
 {
 	struct resource *curr = NULL;
-	int is_finded = 0;
-	int component_index = -1;
+	struct resource **remove_resource = NULL;
+	int remove_count = 0;
+	int *remove_component_index = NULL;
 	char *tmp = NULL;
 	int i;
 
@@ -396,65 +397,76 @@ int resource_remove_all_component_by_name(struct resource *head, char *subscribe
 	}
 
 	list_for_each_entry(curr, &head->list, list) {
-		/* clear varirable */
-		is_finded = 0;
-		component_index = -1;
-
 		/* find the index of subscribed component */
 		for (i = 0; i < curr->subscribed_count; i++) {
 			if (!strncmp(curr->subscribed_component + i * COMPONENT_NAME_LEN
 						, subscribed_component
 						, COMPONENT_NAME_LEN)) {
-				is_finded = 1;
-				component_index = i;
+				remove_count++;
+				remove_resource = realloc(remove_resource, remove_count * sizeof(struct resource *));
+				remove_resource[remove_count - 1] = curr;
+				remove_component_index = realloc(remove_component_index, remove_count * sizeof(int));
+				remove_component_index[remove_count - 1] = i;
 				break;
 			}
 		}
+	}
 
-		if (is_finded) {
-			curr->subscribed_count--;
+	/* remove component from all resources */
+	for (i = 0; i < remove_count; i++) {
 
-			if (!curr->lock) {
-				curr->lock = 1;
+		/* reuse 'curr' resource pointer */
+		curr = remove_resource[i];
 
-				/* check if subscribed_count is already '0', just free it. */
-				if (!curr->subscribed_count) {
-					list_del(&curr->list);
-					if (curr->subscribed_component)
-						free(curr->subscribed_component);
-					free(curr);
-					return SANJI_SUCCESS;
-				}
+		curr->subscribed_count--;
 
+		if (!curr->lock) {
+			curr->lock = 1;
 
-				/* cascade subscribed component */
-				tmp = malloc(curr->subscribed_count * COMPONENT_NAME_LEN);
-				if (!tmp) {
-					fprintf(stderr, "Error: remove node failed, out of memory.\n");
-					curr->lock = 0;
-					return SANJI_DATA_ERROR;
-				}
-				memset(tmp, '\0', curr->subscribed_count * COMPONENT_NAME_LEN);
-
-				if (!component_index) {
-					memcpy(tmp, curr->subscribed_component + COMPONENT_NAME_LEN, curr->subscribed_count * COMPONENT_NAME_LEN);
-				} else if (component_index == (curr->subscribed_count + 1)) {
-					memcpy(tmp, curr->subscribed_component, curr->subscribed_count * COMPONENT_NAME_LEN);
-				} else {
-					memcpy(tmp, curr->subscribed_component, component_index * COMPONENT_NAME_LEN);
-					memcpy(tmp + component_index * COMPONENT_NAME_LEN
-							, curr->subscribed_component + (component_index + 1) * COMPONENT_NAME_LEN
-							, (curr->subscribed_count - component_index) * COMPONENT_NAME_LEN);
-				}
-				free(curr->subscribed_component);
-				curr->subscribed_component = tmp;
-
-				curr->lock = 0;
-			} else {
-				return SANJI_LOCKED;
+			/* check if subscribed_count is already '0', just free it. */
+			if (!curr->subscribed_count) {
+				list_del(&curr->list);
+				if (curr->subscribed_component)
+					free(curr->subscribed_component);
+				free(curr);
+				continue;
 			}
+
+			/* cascade subscribed component */
+			tmp = malloc(curr->subscribed_count * COMPONENT_NAME_LEN);
+			if (!tmp) {
+				fprintf(stderr, "Error: remove node failed, out of memory.\n");
+				curr->lock = 0;
+				if (remove_resource) free(remove_resource);
+				if (remove_component_index) free(remove_component_index);
+				return SANJI_DATA_ERROR;
+			}
+			memset(tmp, '\0', curr->subscribed_count * COMPONENT_NAME_LEN);
+
+			if (!remove_component_index[i]) {
+				memcpy(tmp, curr->subscribed_component + COMPONENT_NAME_LEN, curr->subscribed_count * COMPONENT_NAME_LEN);
+			} else if (remove_component_index[i] == (curr->subscribed_count + 1)) {
+				memcpy(tmp, curr->subscribed_component, curr->subscribed_count * COMPONENT_NAME_LEN);
+			} else {
+				memcpy(tmp, curr->subscribed_component, remove_component_index[i] * COMPONENT_NAME_LEN);
+				memcpy(tmp + remove_component_index[i] * COMPONENT_NAME_LEN
+						, curr->subscribed_component + (remove_component_index[i] + 1) * COMPONENT_NAME_LEN
+						, (curr->subscribed_count - remove_component_index[i]) * COMPONENT_NAME_LEN);
+			}
+			free(curr->subscribed_component);
+			curr->subscribed_component = tmp;
+
+			curr->lock = 0;
+		} else {
+			if (remove_resource) free(remove_resource);
+			if (remove_component_index) free(remove_component_index);
+			return SANJI_LOCKED;
 		}
 	}
+
+	/* free */
+	if (remove_resource) free(remove_resource);
+	if (remove_component_index) free(remove_component_index);
 
 	return SANJI_SUCCESS;
 }
