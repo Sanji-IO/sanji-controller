@@ -771,16 +771,17 @@ int sanji_routing_req(
 	/*
 	 * we lookup resource first,
 	 * since we have the capability to response after acquiring the resource.
+	 *
+	 * match the longest resource to topic.
 	 */
 	resource = resource_lookup_node_by_name(sanji_resource, topic);
-	if (!resource) {
+	while (!resource) {
 		/* truncate the last fragment */
 		p = strrchr(topic, '/');
 		if (p) {
 			*p = '\0';
 			resource = resource_lookup_node_by_name(sanji_resource, topic);
-		}
-		if (!resource) {
+		} else {
 			DEBUG_PRINT("Resource not been registered.");
 			return 1;
 		}
@@ -832,8 +833,10 @@ int sanji_routing_req(
 			DEBUG_PRINT("subscribed_component(%s)", subscribed_component + i * COMPONENT_NAME_LEN);
 		}
 #endif
-		/* reallocate model chain and view chain */
+		/* increase model chain counts */
 		model_chain_count++;
+
+		/* reallocate model chains */
 		model_chain_tmp = (struct model_chain *)realloc(model_chain, model_chain_count * sizeof(struct model_chain));
 		if (!model_chain_tmp) {
 			DEBUG_PRINT("ERROR: out of memory");
@@ -872,10 +875,10 @@ int sanji_routing_req(
 					return 1;
 				}
 
-				/* increase count */
+				/* increase model counts */
 				model_chain_tmp->count++;
 
-				/* reallocate models here */
+				/* reallocate models */
 				models_tmp = (char *)realloc(model_chain_tmp->models, model_chain_tmp->count * COMPONENT_NAME_LEN);
 				if (!models_tmp) {
 					DEBUG_PRINT("ERROR: out of memory");
@@ -934,10 +937,10 @@ int sanji_routing_req(
 			/* for each view */
 			is_view = component_node_is_given_role(component, "view");
 			if (is_view) {
-				/* increase count */
+				/* increase view counts */
 				view_chain_count++;
 
-				/* reallocate views here */
+				/* reallocate views */
 				view_chain_tmp = (char *)realloc(view_chain, model_chain_count * COMPONENT_NAME_LEN);
 				if (!view_chain_tmp) {
 					DEBUG_PRINT("ERROR: out of memory");
@@ -965,6 +968,18 @@ int sanji_routing_req(
 		hook_count = 0;
 
 	} while (subscribed_count);
+
+	/* 
+	 * If resouces doesn't be subscribed by any model.
+	 * It could happen that resource is subscribed by views only.
+	 */
+	if (!model_chain->count) {
+		DEBUG_PRINT("ERROR: Resource has no subscribed model.");
+		sanji_routing_response_error(resource, id, SESSION_CODE_FORBIDDEN, "request forbidden", "resource has no subscribed model");
+		if (model_chain) session_free_model_chain(model_chain, model_chain_count);
+		if (view_chain) free(view_chain);
+		return 1;
+	}
 
 	/* allocate result chain */
 	result_chain = json_array();

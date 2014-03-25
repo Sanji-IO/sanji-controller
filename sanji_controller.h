@@ -10,7 +10,7 @@ extern "C" {
  * DEFINE MACRO
  * ##########################
  */
-#define SANJI_VERSION "1.0.0"
+#define SANJI_VERSION "1.1.0"
 #define SANJI_HOSTNAME_BUFSIZE 256
 #define SANJI_IP_LEN 16
 #define SANJI_ID_LEN (MOSQ_MQTT_ID_MAX_LENGTH + 32)
