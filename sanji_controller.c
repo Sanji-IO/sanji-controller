@@ -1188,6 +1188,23 @@ int sanji_dispatch_context(char *context, unsigned int context_len)
 	return SANJI_SUCCESS;
 }
 
+void sanji_refresh_session()
+{
+	static time_t last_time = 0;
+	static time_t now_time = 0;
+	static unsigned int diff_time = 0;
+
+	now_time = atol(get_timestamp(SANJI_TIMESTAMP_MODE_MONOTONIC));
+	DEBUG_PRINT("now time(%ld)", now_time);
+	if (last_time) {
+		diff_time = (unsigned int)(now_time - last_time);
+		if (diff_time) {
+			session_decref_ttl(sanji_session, sanji_resource, sanji_component, mosq, ud, diff_time);
+		}
+	}
+	last_time = now_time;
+}
+
 /*
  * ##########################
  * CALLBACK FUNCTIONS
@@ -1284,10 +1301,6 @@ int main(int argc, char *argv[])
 	char host[SANJI_IP_LEN] = SANJI_DEFAULT_IP;
 	int port = SANJI_DEFAULT_PORT;
 	int keepalive = SANJI_DEFAULT_KEEPALIVE;
-	/* ttl */
-	static time_t last_time = 0;
-	static time_t now_time = 0;
-	static unsigned int diff_time = 0;
 	/* will information */
 	char *will_topic = NULL;
 	long will_payloadlen = 0;
@@ -1322,6 +1335,7 @@ int main(int argc, char *argv[])
 	/* set qos of publish */
 	ud->qos_sent = 2;
 
+	/* TODO: use getopt */
 	/* get option */
 	for(i=1; i<argc; i++){
 		if(!strcmp(argv[i], "-p") || !strcmp(argv[i], "--port")){
@@ -1526,6 +1540,10 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "Warning: Not using password since username not set.\n");
 	}
 
+	/* TODO: support config file */
+
+	/* TODO: daemonlize */
+
 	/* setup signal handler */
 	signal(SIGINT, sanji_signal_handler);
 	signal(SIGTERM, sanji_signal_handler);
@@ -1597,15 +1615,7 @@ int main(int argc, char *argv[])
 		rc = mosquitto_loop(mosq, SANJI_REFRESH_INTERVAL, 1);
 
 		/*  refresh ttl for each session */
-		now_time = atol(get_timestamp(SANJI_TIMESTAMP_MODE_MONOTONIC));
-		DEBUG_PRINT("now time(%ld)", now_time);
-		if (last_time) {
-			diff_time = (unsigned int)(now_time - last_time);
-			if (diff_time) {
-				session_decref_ttl(sanji_session, sanji_resource, sanji_component, mosq, ud, diff_time);
-			}
-		}
-		last_time = now_time;
+		sanji_refresh_session();
 
 		if (sanji_run && rc) {
 			fprintf(stderr, "SANJI: reconnect to server\n");

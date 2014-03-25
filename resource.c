@@ -248,7 +248,6 @@ int resource_is_any_locked_by_component(struct resource *head, char *subscribed_
 	return is_locked;
 }
 
-
 int resource_append_component_by_name(struct resource *head, char *name, char *subscribed_component)
 {
 	struct resource *curr = NULL;

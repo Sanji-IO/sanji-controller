@@ -385,7 +385,7 @@ int session_step_stop(
 
 	/* dump packet context from json object 'root' and node->result_chain */
 	if (node->curr_step > node->model_chain_count) {
-		 /* sesion success: append/update all 'data' */
+		/* sesion success: append/update all 'data' */
 		DEBUG_PRINT("session(%d) succeed with total step(%d).", node->id, node->model_chain_count);
 		if (node->result_chain && json_is_array(node->result_chain)) {
 			for (i = 0; i < json_array_size(node->result_chain); i++) {
@@ -424,13 +424,17 @@ int session_step_stop(
 		response_root = root;
 	}
 
-	packet_context = json_dumps(response_root, JSON_INDENT(4));
-	if (!packet_context) {
-		DEBUG_PRINT("Error: out of memory");
-		return SANJI_INTERNAL_ERROR;
+	/* dump response context */
+	if (node->view_chain_count) {
+		packet_context = json_dumps(response_root, JSON_INDENT(4));
+		if (!packet_context) {
+			DEBUG_PRINT("Error: out of memory");
+			if (!root) json_decref(response_root);
+			return SANJI_INTERNAL_ERROR;
+		}
+		packet_context_len = strlen(packet_context);
 	}
 	if (!root) json_decref(response_root);
-	packet_context_len = strlen(packet_context);
 
 	/* publish to all views */
 	ud = (struct sanji_userdata *)obj;
@@ -440,8 +444,10 @@ int session_step_stop(
 		DEBUG_PRINT("session(%d) sends to view(%s) with tunnel(%s).", node->id, view, tunnel);
 		mosquitto_publish(mosq, &ud->mid_sent, tunnel, packet_context_len, packet_context, ud->qos_sent, ud->retain_sent);
 	}
-	DEBUG_PRINT("%s", packet_context);
-	free(packet_context);
+	if (packet_context) {
+		DEBUG_PRINT("%s", packet_context);
+		free(packet_context);
+	}
 
 	/* unlock all related resource/models for write-like method */
 	if (resource_is_write_like_method(node->method)) {
@@ -489,7 +495,7 @@ int session_step(
 		return session_step_stop(node, session_list, resource_list, component_list, mosq, obj, root);
 	}
 
-	/* update wait for this step */
+	/* update number of waited models for this step */
 	session_node_update_wait(node);
 
 	/* dump all 'data' from node->result_chain to json object 'root' */
@@ -588,6 +594,11 @@ void session_decref_ttl(struct session *session_list, struct resource *resource_
 		session_step_stop(flush_list[i], session_list, resource_list, component_list, mosq, obj, NULL);
 	}
 	if (flush_list) free(flush_list);
+
+#if (defined DEBUG) || (defined VERBOSE)
+	DEBUG_PRINT("dump sessions:");
+	session_display(session_list);
+#endif
 
 }
 
