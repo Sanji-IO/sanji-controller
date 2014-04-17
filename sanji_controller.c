@@ -500,7 +500,7 @@ int sanji_register_procedure(
 	memset(_tunnel, '\0', COMPONENT_TUNNEL_LEN);
 	if (method == RESOURCE_METHOD_CREATE) {
 		tmp = json_object_get(data, "tunnel");
-		if (tmp && json_is_string(tmp)) {
+		if (tmp && json_is_string(tmp) && (strlen(json_string_value(tmp)) > 0)) {
 			strncpy(_tunnel, json_string_value(tmp), COMPONENT_TUNNEL_LEN);
 			_tunnel[COMPONENT_TUNNEL_LEN - 1] = '\0';
 			DEBUG_PRINT("tunnel: '%s'", _tunnel);
@@ -525,7 +525,7 @@ int sanji_register_procedure(
 		} else {
 			/* use 'name' in attribute */
 			tmp = json_object_get(data, "name");
-			if (tmp && json_is_string(tmp)) {
+			if (tmp && json_is_string(tmp) && (strlen(json_string_value(tmp)) > 0)) {
 				strncpy(name, json_string_value(tmp), COMPONENT_NAME_LEN);
 				name[COMPONENT_NAME_LEN - 1] = '\0';
 				DEBUG_PRINT("name: '%s'", name);
@@ -545,7 +545,7 @@ int sanji_register_procedure(
 		/* acquire 'description' */
 		memset(description, '\0', COMPONENT_DESCRIPTION_LEN);
 		tmp = json_object_get(data, "description");
-		if (tmp && json_is_string(tmp)) {
+		if (tmp && json_is_string(tmp) && (strlen(json_string_value(tmp)) > 0)) {
 			strncpy(description, json_string_value(tmp), COMPONENT_DESCRIPTION_LEN);
 			description[COMPONENT_DESCRIPTION_LEN - 1] = '\0';
 			DEBUG_PRINT("description: '%s'", description);
@@ -558,7 +558,7 @@ int sanji_register_procedure(
 		/* acquire 'role' */
 		memset(role, '\0', COMPONENT_ROLE_LEN);
 		tmp = json_object_get(data, "role");
-		if (tmp && json_is_string(tmp)) {
+		if (tmp && json_is_string(tmp) && (strlen(json_string_value(tmp)) > 0)) {
 			strncpy(role, json_string_value(tmp), COMPONENT_ROLE_LEN);
 			role[COMPONENT_ROLE_LEN - 1] = '\0';
 			DEBUG_PRINT("role: '%s'", role);
@@ -574,24 +574,38 @@ int sanji_register_procedure(
 		if (_hook) {
 			if (json_is_array(_hook)) {
 				hook_count = json_array_size(_hook);
-				hook = (char *)malloc(hook_count * sizeof(char) * COMPONENT_NAME_LEN);
-				if (!hook) {
-					DEBUG_PRINT("ERROR: out of memory");
-					sanji_response_error(_tunnel, id, SESSION_CODE_SERVICE_UNAVAILABLE, "service unavailable", NULL);
-					return 1;
-				}
-				for (i = 0; i < hook_count; i++) {
-					tmp = json_array_get(_hook, i);
-					if (tmp && json_is_string(tmp)) {
-						strncpy(hook + (i * COMPONENT_NAME_LEN), json_string_value(tmp), COMPONENT_NAME_LEN);
-						hook[(i + 1) * COMPONENT_NAME_LEN - 1] = '\0';
+				if (hook_count) {
+					hook = (char *)malloc(hook_count * sizeof(char) * COMPONENT_NAME_LEN);
+					if (!hook) {
+						DEBUG_PRINT("ERROR: out of memory");
+						sanji_response_error(_tunnel, id, SESSION_CODE_SERVICE_UNAVAILABLE, "service unavailable", NULL);
+						return 1;
+					}
+					for (i = 0; i < hook_count; i++) {
+						tmp = json_array_get(_hook, i);
+						if (tmp && json_is_string(tmp) && (strlen(json_string_value(tmp)) > 0)) {
+							strncpy(hook + (i * COMPONENT_NAME_LEN), json_string_value(tmp), COMPONENT_NAME_LEN);
+							hook[(i + 1) * COMPONENT_NAME_LEN - 1] = '\0';
+						} else {
+							DEBUG_PRINT("ERROR: wrong sanji packet, empty 'hook'.");
+							sanji_response_error(_tunnel, id, SESSION_CODE_BAD_REQUEST, "wrong register context", "empty 'hook'");
+							if (hook) free(hook);
+							return 1;
+						}
 					}
 				}
 			} else if (json_is_string(_hook)) {
 				hook_count = 1;
 				hook = (char *)malloc(hook_count * sizeof(char) * COMPONENT_NAME_LEN);
-				strncpy(hook, json_string_value(_hook), COMPONENT_ROLE_LEN);
-				hook[COMPONENT_ROLE_LEN - 1] = '\0';
+				if (strlen(json_string_value(_hook)) > 0) {
+					strncpy(hook, json_string_value(_hook), COMPONENT_ROLE_LEN);
+					hook[COMPONENT_ROLE_LEN - 1] = '\0';
+				} else {
+					DEBUG_PRINT("ERROR: wrong sanji packet, empty 'hook'.");
+					sanji_response_error(_tunnel, id, SESSION_CODE_BAD_REQUEST, "wrong register context", "empty 'hook'");
+					if (hook) free(hook);
+					return 1;
+				}
 			}
 		}
 
@@ -613,6 +627,12 @@ int sanji_register_procedure(
 		if (_resources) {
 			if (json_is_array(_resources)) {
 				resources_count = json_array_size(_resources);
+				if (!resources_count) {
+					DEBUG_PRINT("ERROR: wrong sanji packet, empty 'resources'.");
+					sanji_response_error(_tunnel, id, SESSION_CODE_BAD_REQUEST, "wrong register context", "empty 'resources'");
+					if (hook) free(hook);
+					return 1;
+				}
 				resources = (char *)malloc(resources_count * sizeof(char) * RESOURCE_NAME_LEN);
 				if (!resources) {
 					DEBUG_PRINT("ERROR: out of memory");
@@ -622,16 +642,30 @@ int sanji_register_procedure(
 				}
 				for (i = 0; i < resources_count; i++) {
 					tmp = json_array_get(_resources, i);
-					if (tmp && json_is_string(tmp)) {
+					if (tmp && json_is_string(tmp) && (strlen(json_string_value(tmp)) > 0)) {
 						strncpy(resources + (i * COMPONENT_NAME_LEN), json_string_value(tmp), COMPONENT_NAME_LEN);
 						resources[(i + 1) * COMPONENT_NAME_LEN - 1] = '\0';
+					} else {
+						DEBUG_PRINT("ERROR: wrong sanji packet, empty 'resources'.");
+						sanji_response_error(_tunnel, id, SESSION_CODE_BAD_REQUEST, "wrong register context", "empty 'resources'");
+						if (hook) free(hook);
+						if (resources) free(resources);
+						return 1;
 					}
 				}
 			} else if (json_is_string(_resources)) {
 				resources_count = 1;
 				resources = (char *)malloc(hook_count * sizeof(char) * COMPONENT_NAME_LEN);
-				strncpy(resources, json_string_value(_resources), COMPONENT_ROLE_LEN);
-				resources[COMPONENT_ROLE_LEN - 1] = '\0';
+				if (strlen(json_string_value(_resources)) > 0) {
+					strncpy(resources, json_string_value(_resources), COMPONENT_ROLE_LEN);
+					resources[COMPONENT_ROLE_LEN - 1] = '\0';
+				} else {
+					DEBUG_PRINT("ERROR: wrong sanji packet, empty 'resources'.");
+					sanji_response_error(_tunnel, id, SESSION_CODE_BAD_REQUEST, "wrong register context", "empty 'resources'");
+					if (hook) free(hook);
+					if (resources) free(resources);
+					return 1;
+				}
 			}
 		} else {
 			DEBUG_PRINT("ERROR: wrong sanji packet, no 'resources'.");
@@ -1188,12 +1222,12 @@ int sanji_dispatch_context(char *context, unsigned int context_len)
 	 */
 	if (!strncmp(SANJI_REGISTER_TOPIC, resource, SANJI_REGISTER_TOPIC_LEN)
 			&& ((strlen(resource) == SANJI_REGISTER_TOPIC_LEN) || (resource[SANJI_REGISTER_TOPIC_LEN] == '/'))) {
-		/* register prcedure */
-		DEBUG_PRINT("[DISPATCH] start register prcedure");
+		/* register procedure */
+		DEBUG_PRINT("[DISPATCH] start register procedure");
 		sanji_register_procedure(root, id, method, resource, code, data);
 	} else {
-		/* routing prcedure */
-		DEBUG_PRINT("[DISPATCH] start routing prcedure");
+		/* routing procedure */
+		DEBUG_PRINT("[DISPATCH] start routing procedure");
 		sanji_routing_procedure(root, id, method, resource, code, data);
 	}
 
