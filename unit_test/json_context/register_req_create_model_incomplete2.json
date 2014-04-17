@@ -1,0 +1,16 @@
+{
+	"id" : 1,
+	"method" : "POST",
+	"resource" : "/controller/registration",
+	"data" : {
+		"name": "incomplete2",
+		"description": "",
+		"tunnel": "incomplete2_tun",
+		"role": "model",
+		"ttl": 10,
+		"hook": "incomplete2_hook",
+		"resources": [
+			"/incomplete2"
+			]
+	}
+}
