@@ -406,6 +406,7 @@ int session_step_stop(
 		/* must free 'response_root' later */
 		response_root = json_object();
 		json_object_set_new(response_root, "code", json_integer(HTTP_REQUEST_TIME_OUT));
+		json_object_set_new(response_root, "id", json_integer(node->id));
 		data = json_object();
 		json_object_set_new(data, "message", json_string("session failed due to ttl expired ."));
 		json_object_set_new(response_root, "data", data);
