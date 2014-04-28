@@ -1,0 +1,5 @@
+{
+	"id" : 1,
+	"method" : "DELETE",
+	"resource" : "/networks/ethernet/1"
+}

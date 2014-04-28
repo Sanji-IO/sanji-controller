@@ -1,0 +1,9 @@
+{
+	"id" : 1,
+	"method" : "PUT",
+	"resource" : "/networks/ethernet/1",
+	"data" : {
+		"type": "WAN",
+		"enable_dhcp": "true"
+	}
+}

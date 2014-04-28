@@ -4,9 +4,9 @@
 pub_tool="../tool/pub_example/pub_example"
 sub_tool="../tool/sub_example/sub_example"
 json_context="./json_context"
+model_json_context="./model_json_context"
 
 # topics
 topic_controller="/controller"
 topic_register="/controller/registration"
-
 
