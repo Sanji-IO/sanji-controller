@@ -189,7 +189,7 @@ int main(int argc, char *argv[])
 	/* broker variable */
 	char host[MQTT_IP_LEN] = "127.0.0.1";
 	int port = 1883;
-	int keepalive = 60;
+	int keepalive = 3600;
 	/* will information */
 	char *will_topic = NULL;
 	long will_payloadlen = 0;
