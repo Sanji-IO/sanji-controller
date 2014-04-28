@@ -1,0 +1,9 @@
+{
+	"id" : 1,
+	"method" : "PUT",
+	"resource" : "/examples/model/1",
+	"data" : {
+		"id": 1,
+		"name": "name2"
+	}
+}

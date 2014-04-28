@@ -1,0 +1,5 @@
+{
+	"id" : 1,
+	"method" : "GET",
+	"resource" : "/examples/model/1"
+}
