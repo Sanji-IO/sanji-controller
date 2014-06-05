@@ -367,7 +367,7 @@ char *component_get_names_by_hook(struct component *head, char *hook, unsigned i
 					}
 					names = names_tmp;
 					memset(names + ((*names_count) - 1) * COMPONENT_NAME_LEN, '\0', COMPONENT_NAME_LEN);
-					memcpy(names + ((*names_count) - 1) * COMPONENT_NAME_LEN, curr->name + i * COMPONENT_NAME_LEN, COMPONENT_NAME_LEN);
+					memcpy(names + ((*names_count) - 1) * COMPONENT_NAME_LEN, curr->name, COMPONENT_NAME_LEN);
 					break;
 				}
 			}
