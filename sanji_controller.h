@@ -10,7 +10,8 @@ extern "C" {
  * DEFINE MACRO
  * ##########################
  */
-#define SANJI_VERSION "1.1.0"
+#define SANJI_CONTROLLER_NAME "controller"
+#define SANJI_VERSION "1.2.0"
 #define SANJI_HOSTNAME_BUFSIZE 256
 #define SANJI_IP_LEN 16
 #define SANJI_ID_LEN (MOSQ_MQTT_ID_MAX_LENGTH + 32)
@@ -27,11 +28,15 @@ extern "C" {
 #define SANJI_RAND_MODE_RANDOM 1
 
 /* controller topics */
-#define SANJI_REGISTER_TOPIC_LEN 24
+#define SANJI_CONTROLLER_TOPIC_LEN 11
 #define SANJI_CONTROLLER_TOPIC "/controller"
 #define SANJI_CONTROLLER_ALL_TOPIC "/controller/#"
+#define SANJI_REGISTER_TOPIC_LEN 24
 #define SANJI_REGISTER_TOPIC "/controller/registration"
 #define SANJI_REGISTER_ALL_TOPIC "/controller/registration/#"
+#define SANJI_RESOURCE_DEPENDENCY_TOPIC_LEN 31
+#define SANJI_RESOURCE_DEPENDENCY_TOPIC "/controller/resource/dependency"
+#define SANJI_RESOURCE_DEPENDENCY_ALL_TOPIC "/controller/resource/dependency/#"
 
 /* sanji configurations */
 #define SANJI_REFRESH_INTERVAL 1000
