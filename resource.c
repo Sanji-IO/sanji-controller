@@ -176,6 +176,44 @@ int resource_lookup_method(const char *method)
 	}
 }
 
+/* This function will allocate memory and return.
+ * Must free return address */
+char *resource_reverse_method(const int method)
+{
+	char *_method = NULL;
+
+	_method = (char *)malloc(RESOURCE_METHOD_LEN * sizeof(char));
+	if (!_method) {
+		fprintf(stderr, "Error: reverse method failed, out of memory.\n");
+		return NULL;
+	}
+	memset(_method, '\0', RESOURCE_METHOD_LEN * sizeof(char));
+
+	switch (method) {
+	case RESOURCE_METHOD_CREATE:
+		sprintf(_method, RESOURCE_METHOD_TEXT_CREATE);
+		return _method;
+		break;
+	case RESOURCE_METHOD_READ:
+		sprintf(_method, RESOURCE_METHOD_TEXT_READ);
+		return _method;
+		break;
+	case RESOURCE_METHOD_UPDATE:
+		sprintf(_method, RESOURCE_METHOD_TEXT_UPDATE);
+		return _method;
+		break;
+	case RESOURCE_METHOD_DELETE:
+		sprintf(_method, RESOURCE_METHOD_TEXT_DELETE);
+		return _method;
+		break;
+	default:
+		break;
+	}
+
+	free(_method);
+	return NULL;
+}
+
 int resource_is_write_like_method(int method)
 {
 	if (method == RESOURCE_METHOD_READ) return 0;
@@ -556,3 +594,37 @@ int resource_unlock_by_name(struct resource *head, char *name)
 	fprintf(stderr, "Error: resource name(%s) is not registered.\n", name);
 	return SANJI_NOT_FOUND;
 }
+
+char *resource_get_names_by_component(struct resource *head, char *component, unsigned int *names_count)
+{
+	struct resource *curr = NULL;
+	char *names = NULL;
+	char *names_tmp = NULL;
+	int i;
+
+	*names_count = 0;
+
+	if (head && component) {
+		list_for_each_entry(curr, &head->list, list) {
+			for (i = 0; i < curr->subscribed_count; i++) {
+				if (!strncmp(curr->subscribed_component + i * COMPONENT_NAME_LEN, component, COMPONENT_NAME_LEN)) {
+					(*names_count)++;
+					names_tmp = (char *)realloc(names, (*names_count) * RESOURCE_NAME_LEN);
+					if (!names_tmp) {
+						DEBUG_PRINT("Error: out of memory");
+						if (names) free(names);
+						*names_count = 0;
+						return NULL;
+					}
+					names = names_tmp;
+					memset(names + ((*names_count) - 1) * RESOURCE_NAME_LEN, '\0', RESOURCE_NAME_LEN);
+					memcpy(names + ((*names_count) - 1) * RESOURCE_NAME_LEN, curr->name, RESOURCE_NAME_LEN);
+					break;
+				}
+			}
+		}
+	}
+
+	return names;
+}
+

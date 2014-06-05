@@ -22,6 +22,12 @@ extern "C" {
 #define RESOURCE_METHOD_UPDATE	HTTP_M_PUT
 #define RESOURCE_METHOD_DELETE	HTTP_M_DELETE
 
+/* CRUD methods text for resource */
+#define RESOURCE_METHOD_TEXT_CREATE	"POST"
+#define RESOURCE_METHOD_TEXT_READ	"GET"
+#define RESOURCE_METHOD_TEXT_UPDATE	"PUT"
+#define RESOURCE_METHOD_TEXT_DELETE	"DELETE"
+
 #define RESOURCE_NAME_LEN 256
 #define RESOURCE_METHOD_LEN 8
 
@@ -37,11 +43,14 @@ struct resource *resource_init();
 int resource_add_node(struct resource *, char *, char *, unsigned int, unsigned int);
 void resource_display(struct resource *);
 int resource_delete_first_name(struct resource *, char *);
-int resource_lookup_method(const char *);
 int resource_is_write_like_method(int);
 int resource_append_component_by_name(struct resource *, char *, char *);
 int resource_remove_component_by_name(struct resource *, char *, char *);
 int resource_remove_all_component_by_name(struct resource *, char *);
+
+/* lookup/reverse method */
+int resource_lookup_method(const char *);
+char *resource_reverse_method(const int);
 struct resource *resource_lookup_node_by_name(struct resource *, char *);
 
 /* lock method */
@@ -59,6 +68,7 @@ int resource_is_any_locked_by_component(struct resource *, char *);
 /* get methods */
 char *resource_get_subscribed_component(struct resource *);
 unsigned int resource_get_subscribed_count(struct resource *);
+char *resource_get_names_by_component(struct resource *, char *, unsigned int *);
 
 /* free method */
 void resource_free(struct resource *);
