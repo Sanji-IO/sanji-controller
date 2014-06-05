@@ -5,10 +5,10 @@ LDFLAGS = -L/usr/local/lib -lmosquitto
 
 all: pub_example
 
-sub_example: pub_example.o
+pub_example: pub_example.o
 	${CC} $^ -o $@ ${LDFLAGS}
 
-sub_example.o: pub_example.c
+pub_example.o: pub_example.c
 	${CC} -c $^ -o $@ ${CFLAGS}
 
 clean: 
