@@ -8,6 +8,18 @@ int main()
 	struct session *session = NULL;
 	struct session *node = NULL;
 	int i, j;
+
+
+	/*
+	 * ###########################
+	 * Init basic variables
+	 * ###########################
+	 */
+
+	/* dependency chain */
+	char *dependency_chain = NULL;
+	int dependency_chain_count = 3;
+
 	/* result chain */
 	json_error_t error;
 	json_t *result_chain2 = NULL; 
@@ -24,6 +36,12 @@ int main()
 	int view_chain_count = 4;
 
 
+	/* dependency_chain */
+	dependency_chain = (char *)malloc(dependency_chain_count * RESOURCE_NAME_LEN);
+	memset(dependency_chain, '\0', dependency_chain_count * RESOURCE_NAME_LEN);
+	for (i = 0; i < dependency_chain_count; i++) {
+		strncpy(dependency_chain + i * RESOURCE_NAME_LEN, "dependency name", RESOURCE_NAME_LEN);
+	}
 
 	/* result_chain */
 	result_chain2 = json_load_file(JSON_FILE, 0, &error);
@@ -40,7 +58,6 @@ int main()
 	//str = json_dumps(result_chain3, JSON_INDENT(4));
 	//fprintf(stderr, "%s\n", str);
 	//free(str);
-
 
 	/* model_chain */
 	model_chain = (struct model_chain *)malloc(model_chain_count * sizeof(struct model_chain));
@@ -65,16 +82,21 @@ int main()
 	}
 
 
+	/*
+	 * ###########################
+	 * Start Unit Test
+	 * ###########################
+	 */
 
-
-	/* init session */
+	/* init */
 	session = session_init();
 
-	session_add_node(session, 1, -1, "r_aaa", NULL, NULL, 0, NULL, 0);
-	session_add_node(session, 2, 0, "r_bbb", result_chain2, NULL, 0, NULL, 0);
-	session_add_node(session, 3, 1, "r_ccc", result_chain3, model_chain, model_chain_count, view_chain, view_chain_count);
+	/* add node */
+	session_add_node(session, 1, -1, "r_aaa", NULL, 0, NULL, NULL, 0, NULL, 0);
+	session_add_node(session, 2, 0, "r_bbb", NULL, 0, result_chain2, NULL, 0, NULL, 0);
+	session_add_node(session, 3, 1, "r_ccc", dependency_chain, dependency_chain_count, result_chain3, model_chain, model_chain_count, view_chain, view_chain_count);
 
-
+	/* display, delete, add node */
 	DEBUG_PRINT();
 	session_display(session);
 
@@ -98,7 +120,7 @@ int main()
 	DEBUG_PRINT();
 	session_display(session);
 
-	session_add_node(session, 4, 2, "r_ddd", NULL, NULL, 0, NULL, 0);
+	session_add_node(session, 4, 2, "r_ddd", NULL, 0, NULL, NULL, 0, NULL, 0);
 	DEBUG_PRINT();
 	session_display(session);
 
@@ -114,6 +136,7 @@ int main()
 	node = session_lookup_node_by_id(session, 5);
 	if (node) DEBUG_PRINT("find node id(%d)", node->id);
 
+	/* free */
 	session_free(session);
 
 	return 0;

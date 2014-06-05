@@ -5,8 +5,8 @@ CFLAGS = -Wall -I/usr/local/include -I..
 LDFLAGS = -L/usr/local/lib -ljansson -lmosquitto
 
 #EXEC = component_unit_test
-#EXEC = resource_unit_test
-EXEC = session_unit_test
+EXEC = resource_unit_test
+#EXEC = session_unit_test
 SRCS = $(EXEC).c resource.c component.c session.c
 OBJS = $(SRCS:.c=.o)
 
@@ -18,6 +18,7 @@ endif
 .PHONY: all clean
 
 all: $(EXEC)
+	-rm *.o
 
 $(EXEC): $(OBJS)
 	$(LD) -o $@ $(OBJS) $(LIBS) $(LDFLAGS)

@@ -5,11 +5,14 @@ int main()
 	struct resource *resource = NULL;
 	struct resource *node = NULL;
 
+	/* init */
 	resource = resource_init();
 
+	/* add node */
 	resource_add_node(resource, "n_aaa", "s_aaa", 1, 0);
 	resource_add_node(resource, "n_bbb", NULL, 0, 0);
 
+	/* display, delete, add node */
 	DEBUG_PRINT();
 	resource_display(resource);
 
@@ -25,6 +28,7 @@ int main()
 	DEBUG_PRINT();
 	resource_display(resource);
 
+	/* add node for subscribed component */
 	char subscribed_component[5][COMPONENT_NAME_LEN];
 	memset(subscribed_component, '\0',  sizeof(subscribed_component));
 	strcpy(&subscribed_component[0][0], "s_ddd_1");
@@ -34,7 +38,6 @@ int main()
 	resource_add_node(resource, "n_ddd", (char *)subscribed_component, 5, 0);
 	DEBUG_PRINT();
 	resource_display(resource);
-
 
 	/* lookup method */
 	char m1[RESOURCE_METHOD_LEN] = "POST";
@@ -118,7 +121,6 @@ int main()
 	DEBUG_PRINT("lock by name return code(%d)", ret);
 	resource_display(resource);
 
-
 	/* unlock by name */
 	ret = resource_unlock_by_name(resource, "n_aaa");
 	DEBUG_PRINT("unlock by name return code(%d)", ret);
@@ -146,12 +148,44 @@ int main()
 	DEBUG_PRINT("unlock by name return code(%d)", ret);
 	resource_display(resource);
 
+	/* free */
+	resource_free(resource);
 
 
 
 
+	/* get name by component */
+	DEBUG_PRINT();
+	resource = resource_init();
+	resource_add_node(resource, "n_aaa", "s_aaa", 1, 0);
+	resource_add_node(resource, "n_bbb", "s_aaa", 1, 0);
+	resource_add_node(resource, "n_ccc", "s_ccc", 1, 0);
+	resource_add_node(resource, "n_ddd", NULL, 0, 0);
+	resource_display(resource);
 
-
+	char *names = NULL;
+	unsigned int names_count;
+	int i;
+	names = resource_get_names_by_component(resource, "s_aaa", &names_count);
+	if (names_count > 0) {
+		for (i = 0; i < names_count; i++) DEBUG_PRINT("get names(%s) by component(%s)", names + i * RESOURCE_NAME_LEN, "s_aaa");
+		free(names);
+	}
+	names = resource_get_names_by_component(resource, "s_bbb", &names_count);
+	if (names_count > 0) {
+		for (i = 0; i < names_count; i++) DEBUG_PRINT("get names(%s) by component(%s)", names + i * RESOURCE_NAME_LEN, "s_bbb");
+		free(names);
+	}
+	names = resource_get_names_by_component(resource, "s_ccc", &names_count);
+	if (names_count > 0) {
+		for (i = 0; i < names_count; i++) DEBUG_PRINT("get names(%s) by component(%s)", names + i * RESOURCE_NAME_LEN, "s_ccc");
+		free(names);
+	}
+	names = resource_get_names_by_component(resource, "s_ddd", &names_count);
+	if (names_count > 0) {
+		for (i = 0; i < names_count; i++) DEBUG_PRINT("get names(%s) by component(%s)", names + i * RESOURCE_NAME_LEN, "s_ccc");
+		free(names);
+	}
 
 	/* free */
 	resource_free(resource);

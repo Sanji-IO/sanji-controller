@@ -6,13 +6,18 @@ int main()
 	struct component *node = NULL;
 	int i;
 
+	/* init */
 	component = component_init();
 
+	/* display empty */
 	component_display(component);
+
+	/* add node */
 	component_add_node(component, "n_aaa", "d_aaa", "t_aaa", "r_aaa", "h_aaa", 1, 111, 0);
 	component_add_node(component, "n_bbb", NULL, "t_bbb", "r_bbb", "h_bbb", 1, 222, 0);
 	component_add_node(component, "n_ccc", NULL, "t_ccc", "r_ccc", NULL, 0, 333, 0);
 
+	/* display, delete, add node */
 	DEBUG_PRINT();
 	component_display(component);
 
@@ -28,6 +33,7 @@ int main()
 	DEBUG_PRINT();
 	component_display(component);
 
+	/* add node for hook */
 	char hook[4][COMPONENT_NAME_LEN];
 	memset(hook, '\0',  sizeof(hook));
 	strcpy(&hook[0][0], "h_eee_1");
@@ -53,8 +59,8 @@ int main()
 	component_append_hook_by_name(component, "n_eee", "h_eee_append1");
 	component_display(component);
 
-	DEBUG_PRINT();
 	/* remove component by name */
+	DEBUG_PRINT();
 	component_remove_hook_by_name(component, "n_ccc", "h_ccc");
 	component_remove_hook_by_name(component, "n_ddd", "h_ddd");
 	component_remove_hook_by_name(component, "n_eee", "h_eee_2");
@@ -131,18 +137,13 @@ int main()
 	DEBUG_PRINT("unlock by name return code(%d)", ret);
 	component_display(component);
 
-
-
 	/* free */
 	component_free(component);
 
 
 
-
-
-
-
 	/* get name by hook */
+	DEBUG_PRINT();
 	component = component_init();
 	component_add_node(component, "n_aaa", "d_aaa", "t_aaa", "r_aaa", NULL, 0, 111, 0);
 	component_add_node(component, "n_bbb", NULL, "t_bbb", "r_bbb", "n_aaa", 1, 222, 0);
@@ -166,7 +167,6 @@ int main()
 		for (i = 0; i < names_count; i++) DEBUG_PRINT("get names(%s) by hook(%s)", names + i * COMPONENT_NAME_LEN, "n_ccc");
 		free(names);
 	}
-
 
 	/* free */
 	component_free(component);
