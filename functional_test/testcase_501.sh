@@ -1,6 +1,6 @@
 #!/bin/sh
 
-source test_case_config
+source testcase_config
 
 ###################################################
 # Test Items:
@@ -9,8 +9,8 @@ source test_case_config
 ###################################################
 
 # create
-${pub_tool} -t "${topic_register}" -f ${json_context}/register_req_create_model_eth1.json
+${PUB_TOOL} -t "${TOPIC_REGISTER}" -f ${JSON_CONTEXT}/register/request_create_model_eth1.json
 
 # delete
-${pub_tool} -t "${topic_register}" -f ${json_context}/register_req_delete_model_eth1.json
+${PUB_TOOL} -t "${TOPIC_REGISTER}" -f ${JSON_CONTEXT}/register/request_delete_model_eth1.json
 
