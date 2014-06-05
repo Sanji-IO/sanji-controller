@@ -20,6 +20,8 @@ struct session *session_create_node(
 		unsigned int id,
 		int method,
 		char *resource,
+		char *dependency_chain,
+		unsigned int dependency_chain_count,
 		json_t *result_chain,
 		struct model_chain *model_chain,
 		unsigned int model_chain_count,
@@ -40,6 +42,8 @@ struct session *session_create_node(
 	node->method = method;
 	if (resource) strncpy(node->resource, resource, RESOURCE_NAME_LEN - 1);
 	node->resource[RESOURCE_NAME_LEN - 1] = '\0';
+	if (dependency_chain) node->dependency_chain = dependency_chain;
+	node->dependency_chain_count = dependency_chain_count;
 	if (result_chain) node->result_chain = result_chain;
 	if (model_chain) node->model_chain = model_chain;
 	node->model_chain_count = model_chain_count;
@@ -68,6 +72,8 @@ int session_add_node(
 		unsigned int id,
 		int method,
 		char *resource,
+		char *dependency_chain,
+		unsigned int dependency_chain_count,
 		json_t *result_chain,
 		struct model_chain *model_chain,
 		unsigned int model_chain_count,
@@ -82,7 +88,7 @@ int session_add_node(
 		return 1;
 	}
 	
-	node = session_create_node(id, method, resource, result_chain, model_chain, model_chain_count, view_chain, view_chain_count);
+	node = session_create_node(id, method, resource, dependency_chain, dependency_chain_count, result_chain, model_chain, model_chain_count, view_chain, view_chain_count);
 	if  (!node) {
 		fprintf(stderr, "Error: add node failed, out of memory.\n");
 		return 1;
@@ -102,6 +108,18 @@ struct session *session_lookup_node_by_id(struct session *head, unsigned int id)
 	}
 
 	return NULL;
+}
+
+void session_display_dependency_chain(char *dependency_chain, unsigned int dependency_chain_count)
+{
+	int i;
+
+	if (dependency_chain) {
+		/* display view chain */
+		for (i = 0; i < dependency_chain_count; i++) {
+			fprintf(stderr, "\tdependency_chain(%d)(%s)\n", i + 1, dependency_chain + i * RESOURCE_NAME_LEN);
+		}
+	}
 }
 
 void session_display_model_chain(struct model_chain *model_chain, unsigned int model_chain_count)
@@ -146,6 +164,9 @@ void session_display(struct session *head)
 			fprintf(stderr, "\tid(%u)\n", curr->id);
 			fprintf(stderr, "\tmethod(%d)\n", curr->method);
 			fprintf(stderr, "\tresource(%s)\n", curr->resource);
+			/* display dependency chain */
+			session_display_dependency_chain(curr->dependency_chain, curr->dependency_chain_count);
+			fprintf(stderr, "\tdependency_chain_count(%d)\n", curr->dependency_chain_count);
 			/* display result chain */
 			fprintf(stderr, "\tresult_chain:\n");
 			if (curr->result_chain) {
@@ -175,6 +196,7 @@ void session_free(struct session *head)
 		while (!list_empty(&head->list)) {
 			curr = list_entry(head->list.next, struct session, list);
 			list_del(&curr->list);
+			if (curr->dependency_chain) free(curr->dependency_chain);
 			if (curr->result_chain) json_decref(curr->result_chain);
 			if (curr->model_chain) session_free_model_chain(curr->model_chain, curr->model_chain_count);
 			if (curr->view_chain) free(curr->view_chain);
@@ -209,6 +231,7 @@ int session_delete_first_resource(struct session *head, char *resource)
 	list_for_each_entry(curr, &head->list, list) {
 		if (!strcmp(curr->resource, resource)) {
 			list_del(&curr->list);
+			if (curr->dependency_chain) free(curr->dependency_chain);
 			if (curr->result_chain) json_decref(curr->result_chain);
 			if (curr->model_chain) session_free_model_chain(curr->model_chain, curr->model_chain_count);
 			if (curr->view_chain) free(curr->view_chain);
@@ -232,6 +255,7 @@ int session_delete_first_id(struct session *head, unsigned int id)
 	list_for_each_entry(curr, &head->list, list) {
 		if (curr->id == id) {
 			list_del(&curr->list);
+			if (curr->dependency_chain) free(curr->dependency_chain);
 			if (curr->result_chain) json_decref(curr->result_chain);
 			if (curr->model_chain) session_free_model_chain(curr->model_chain, curr->model_chain_count);
 			if (curr->view_chain) free(curr->view_chain);
@@ -275,8 +299,10 @@ int session_node_unlock_by_step(struct session *node, struct resource *resource_
 
 	if (!step) {
 		/* unlock resource */
-		ret = resource_unlock_by_name(resource_list, node->resource);
-		if (ret) return ret;
+		for (i = 0; i < node->dependency_chain_count; i++) {
+			ret = resource_unlock_by_name(resource_list, node->dependency_chain + i * RESOURCE_NAME_LEN);
+			if (ret) return ret;
+		}
 
 		/* unlock all models of all steps */
 		for (i = 0; i < node->model_chain_count; i++) {
@@ -314,8 +340,10 @@ int session_node_lock_by_step(struct session *node, struct resource *resource_li
 
 	if (!step) {
 		/* lock resource */
-		ret = resource_lock_by_name(resource_list, node->resource);
-		if (ret) return ret;
+		for (i = 0; i < node->dependency_chain_count; i++) {
+			ret = resource_lock_by_name(resource_list, node->dependency_chain + i * RESOURCE_NAME_LEN);
+			if (ret) return ret;
+		}
 
 		/* lock all component of all steps */
 		for (i = 0; i < node->model_chain_count; i++) {
@@ -379,8 +407,10 @@ int session_step_stop(
 	json_t *result_data = NULL;
 	json_t *root_data = NULL;
 	json_t *response_root = NULL;
+	json_t *response_sign = NULL;
 	char *packet_context = NULL;
 	int packet_context_len;
+	char *_method = NULL;
 	int i;
 
 	/* dump packet context from json object 'root' and node->result_chain */
@@ -405,8 +435,25 @@ int session_step_stop(
 
 		/* must free 'response_root' later */
 		response_root = json_object();
+
+		/* add 'code', 'id', 'resource' */
 		json_object_set_new(response_root, "code", json_integer(HTTP_REQUEST_TIME_OUT));
 		json_object_set_new(response_root, "id", json_integer(node->id));
+		json_object_set_new(response_root, "resource", json_string(node->resource));
+		_method = resource_reverse_method(node->method);
+
+		/* add 'method' */
+		if (_method) {
+			json_object_set_new(response_root, "method", json_string(_method));
+			free(_method);
+		}
+
+		/* add 'sign' */
+		response_sign = json_array();
+		json_array_append_new(response_sign, json_string(SANJI_CONTROLLER_NAME));
+		json_object_set_new(response_root, "sign", response_sign);
+
+		/* add 'data' */
 		data = json_object();
 		json_object_set_new(data, "message", json_string("session failed due to ttl expired ."));
 		json_object_set_new(response_root, "data", data);
@@ -420,7 +467,6 @@ int session_step_stop(
 		json_object_set_new(data, "message", json_string("failed to operate the resource, please see log for more details."));
 		json_object_set(data, "log", node->result_chain);
 		json_object_set_new(root, "data", data);
-#else
 #endif
 		response_root = root;
 	}
@@ -597,8 +643,8 @@ void session_decref_ttl(struct session *session_list, struct resource *resource_
 	if (flush_list) free(flush_list);
 
 #if (defined DEBUG) || (defined VERBOSE)
-	DEBUG_PRINT("dump sessions:");
-	session_display(session_list);
+//	DEBUG_PRINT("dump sessions:");
+//	session_display(session_list);
 #endif
 
 }
