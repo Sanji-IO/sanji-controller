@@ -1,7 +1,7 @@
 {
 	"id" : 1,
 	"method" : "PUT",
-	"resource" : "/networks/ethernet/1",
+	"resource" : "/network/ethernet/1",
 	"data" : {
 		"name": "eth1"
 	}

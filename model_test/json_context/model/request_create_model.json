@@ -1,7 +1,7 @@
 {
 	"id" : 1,
 	"method" : "POST",
-	"resource" : "/examples/model",
+	"resource" : "/example/model",
 	"data" : {
 		"id": 1,
 		"name": "model1",

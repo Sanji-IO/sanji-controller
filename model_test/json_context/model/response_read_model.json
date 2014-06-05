@@ -2,5 +2,5 @@
 	"id" : 1,
 	"code" : 200,
 	"method" : "GET",
-	"resource" : "/examples/model/1"
+	"resource" : "/example/model/1"
 }

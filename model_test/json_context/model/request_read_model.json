@@ -1,5 +1,5 @@
 {
 	"id" : 1,
 	"method" : "GET",
-	"resource" : "/examples/model"
+	"resource" : "/example/model/1"
 }
