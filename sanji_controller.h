@@ -11,7 +11,7 @@ extern "C" {
  * ##########################
  */
 #define SANJI_CONTROLLER_NAME "controller"
-#define SANJI_VERSION "1.2.0"
+#define SANJI_VERSION "1.3.0"
 #define SANJI_HOSTNAME_BUFSIZE 256
 #define SANJI_IP_LEN 16
 #define SANJI_ID_LEN (MOSQ_MQTT_ID_MAX_LENGTH + 32)
