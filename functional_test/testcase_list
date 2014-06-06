@@ -2,15 +2,10 @@
 
 #############################################
 # Case 1xx: Controller Basic Test
-#
 # Case 2xx: Routing Test
-#
 # Case 3xx: Routing Dependency Test
-#
 # Case 4xx: Time-To-Live Test
-#
 # Case 5xx: Register Test
-#
 # Case 6xx: Resource Dependency API Test
 #############################################
 
@@ -21,6 +16,8 @@
 # 202: topic matching for long topics
 # 203: topic matching with no resource found
 # 204: found resource but only subscribed by 'view'
+# 205: controller should support routing query string '?'
+# 206: controller should support subscribed wildcard resource for '#'
 
 # 301: routing write-like request with dependency
 # 302: routing write-like request with dependency, but some model fail

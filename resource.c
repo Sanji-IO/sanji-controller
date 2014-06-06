@@ -509,7 +509,7 @@ int resource_remove_all_component_by_name(struct resource *head, char *subscribe
 	return SANJI_SUCCESS;
 }
 
-struct resource *resource_lookup_node_by_name(struct resource *head, char *name)
+struct resource *resource_lookup_node_by_name(struct resource *head, const char *name)
 {
 	struct resource *curr = NULL;
 
@@ -520,6 +520,40 @@ struct resource *resource_lookup_node_by_name(struct resource *head, char *name)
 	}
 
 	return NULL;
+}
+
+/* lookup for wildcard '#' */
+struct resource **resource_lookup_wildcard_nodes_by_name(struct resource *head, const char *name, unsigned int *resources_count)
+{
+	struct resource *curr = NULL;
+	struct resource **resources = NULL;
+	char _name[RESOURCE_NAME_LEN];
+	char *p = NULL;
+
+	*resources_count = 0;
+
+	if (head) {
+		list_for_each_entry(curr, &head->list, list) {
+			/* deep copy curr->name */
+			memset(_name, '\0', RESOURCE_NAME_LEN);
+			strncpy(_name, curr->name, RESOURCE_NAME_LEN);
+
+			/* truncate the character before '#' */
+			p = strchr(_name, '#');
+			if (p) {
+				*p = '\0';
+
+				/* start lookup */
+				if (!strncmp(_name, name, strlen(_name))) {
+					(*resources_count)++;
+					resources = realloc(resources, (*resources_count) * sizeof(struct resource *));
+					resources[(*resources_count) - 1] = curr;
+				}
+			}
+		}
+	}
+
+	return resources;
 }
 
 char *resource_get_subscribed_component(struct resource *node)

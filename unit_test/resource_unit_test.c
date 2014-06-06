@@ -190,5 +190,138 @@ int main()
 	/* free */
 	resource_free(resource);
 
+
+
+
+
+	/* lookup nodes by name for wildcard '#' */
+	struct resource **nodes = NULL;
+	unsigned int nodes_count = 0;
+	DEBUG_PRINT();
+	resource = resource_init();
+	resource_add_node(resource, "/xxx/aaa", "s_aaa", 1, 0);
+	resource_add_node(resource, "/xxx/bbb", "s_bbb", 1, 0);
+	resource_add_node(resource, "/xxx/#", "s_ccc", 1, 0);
+	resource_add_node(resource, "/xxx/aaa/#", NULL, 0, 0);
+	resource_add_node(resource, "/#", NULL, 0, 0);
+	resource_add_node(resource, "#", NULL, 0, 0);
+	resource_add_node(resource, "/xxx#", NULL, 0, 0);
+	resource_add_node(resource, "/xxx#yyy", NULL, 0, 0);
+	resource_display(resource);
+
+	nodes = resource_lookup_wildcard_nodes_by_name(resource, "", &nodes_count);
+	if (nodes) {
+		DEBUG_PRINT("=========");
+		for (i = 0; i < nodes_count; i++) {
+			DEBUG_PRINT("-----> find nodes(%d: %s)", nodes_count, nodes[i]->name);
+		}
+		free(nodes);
+	}
+
+	nodes = resource_lookup_wildcard_nodes_by_name(resource, "/", &nodes_count);
+	if (nodes) {
+		DEBUG_PRINT("=========");
+		for (i = 0; i < nodes_count; i++) {
+			DEBUG_PRINT("-----> find nodes(%d: %s)", nodes_count, nodes[i]->name);
+		}
+		free(nodes);
+	}
+
+	nodes = resource_lookup_wildcard_nodes_by_name(resource, "/xxx", &nodes_count);
+	if (nodes) {
+		DEBUG_PRINT("=========");
+		for (i = 0; i < nodes_count; i++) {
+			DEBUG_PRINT("-----> find nodes(%d: %s)", nodes_count, nodes[i]->name);
+		}
+		free(nodes);
+	}
+
+	nodes = resource_lookup_wildcard_nodes_by_name(resource, "/yyy", &nodes_count);
+	if (nodes) {
+		DEBUG_PRINT("=========");
+		for (i = 0; i < nodes_count; i++) {
+			DEBUG_PRINT("-----> find nodes(%d: %s)", nodes_count, nodes[i]->name);
+		}
+		free(nodes);
+	}
+
+	nodes = resource_lookup_wildcard_nodes_by_name(resource, "/xxx/", &nodes_count);
+	if (nodes) {
+		DEBUG_PRINT("=========");
+		for (i = 0; i < nodes_count; i++) {
+			DEBUG_PRINT("-----> find nodes(%d: %s)", nodes_count, nodes[i]->name);
+		}
+		free(nodes);
+	}
+
+	nodes = resource_lookup_wildcard_nodes_by_name(resource, "/xxxxxx", &nodes_count);
+	if (nodes) {
+		DEBUG_PRINT("=========");
+		for (i = 0; i < nodes_count; i++) {
+			DEBUG_PRINT("-----> find nodes(%d: %s)", nodes_count, nodes[i]->name);
+		}
+		free(nodes);
+	}
+
+	nodes = resource_lookup_wildcard_nodes_by_name(resource, "/xxx/aaa", &nodes_count);
+	if (nodes) {
+		DEBUG_PRINT("=========");
+		for (i = 0; i < nodes_count; i++) {
+			DEBUG_PRINT("-----> find nodes(%d: %s)", nodes_count, nodes[i]->name);
+		}
+		free(nodes);
+	}
+
+	nodes = resource_lookup_wildcard_nodes_by_name(resource, "/xxx/bbb", &nodes_count);
+	if (nodes) {
+		DEBUG_PRINT("=========");
+		for (i = 0; i < nodes_count; i++) {
+			DEBUG_PRINT("-----> find nodes(%d: %s)", nodes_count, nodes[i]->name);
+		}
+		free(nodes);
+	}
+
+	nodes = resource_lookup_wildcard_nodes_by_name(resource, "/xxx/aaa/", &nodes_count);
+	if (nodes) {
+		DEBUG_PRINT("=========");
+		for (i = 0; i < nodes_count; i++) {
+			DEBUG_PRINT("-----> find nodes(%d: %s)", nodes_count, nodes[i]->name);
+		}
+		free(nodes);
+	}
+
+	nodes = resource_lookup_wildcard_nodes_by_name(resource, "/xxx/bbb/", &nodes_count);
+	if (nodes) {
+		DEBUG_PRINT("=========");
+		for (i = 0; i < nodes_count; i++) {
+			DEBUG_PRINT("-----> find nodes(%d: %s)", nodes_count, nodes[i]->name);
+		}
+		free(nodes);
+	}
+
+	nodes = resource_lookup_wildcard_nodes_by_name(resource, "/xxx/aaa/111", &nodes_count);
+	if (nodes) {
+		DEBUG_PRINT("=========");
+		for (i = 0; i < nodes_count; i++) {
+			DEBUG_PRINT("-----> find nodes(%d: %s)", nodes_count, nodes[i]->name);
+		}
+		free(nodes);
+	}
+
+	nodes = resource_lookup_wildcard_nodes_by_name(resource, "/xxx/aaa/111/222", &nodes_count);
+	if (nodes) {
+		DEBUG_PRINT("=========");
+		for (i = 0; i < nodes_count; i++) {
+			DEBUG_PRINT("-----> find nodes(%d: %s)", nodes_count, nodes[i]->name);
+		}
+		free(nodes);
+	}
+
+
+	/* free */
+	resource_free(resource);
+
+
+
 	return 0;
 }

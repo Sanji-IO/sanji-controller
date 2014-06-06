@@ -51,7 +51,8 @@ int resource_remove_all_component_by_name(struct resource *, char *);
 /* lookup/reverse method */
 int resource_lookup_method(const char *);
 char *resource_reverse_method(const int);
-struct resource *resource_lookup_node_by_name(struct resource *, char *);
+struct resource *resource_lookup_node_by_name(struct resource *, const char *);
+struct resource **resource_lookup_wildcard_nodes_by_name(struct resource *, const char *, unsigned int *);
 
 /* lock method */
 int resource_node_lock(struct resource *);

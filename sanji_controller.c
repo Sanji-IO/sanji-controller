@@ -855,6 +855,27 @@ int routing_error_response(
 	return 0;
 }
 
+int routing_error_response_all(
+		struct resource *resource[],
+		unsigned int resource_count,
+		unsigned int id,
+		int method,
+		char *topic,
+		int status_code,
+		char *message,
+		char *log)
+{
+	int i;
+	int ret;
+
+	for (i = 0; i < resource_count; i++) {
+		ret = routing_error_response(resource[i], id, method, topic, status_code, message, log);
+		if (ret) return ret;
+	}
+
+	return 0;
+}
+
 int routing_req(
 		json_t *root,
 		unsigned int id,
@@ -882,34 +903,44 @@ int routing_req(
 	int is_duplicate = 0;
 	/* to allocate request data var */
 	struct component *component = NULL;
+	struct resource **resource_list = NULL;
+	unsigned int resource_list_count = 0;
 	struct resource *resource = NULL;
+	unsigned int resource_count = 0;
 	char _resource[RESOURCE_NAME_LEN];
 	char *subscribed_component = NULL;
+	unsigned int _subscribed_count = 0;
 	unsigned int subscribed_count = 0;
 	char *hook_component = NULL;
 	char *_hook_component = NULL;
 	unsigned int hook_count = 0;
 	unsigned int last_hook_count = 0;
 	/* temp var */
+	struct resource **resource_list_tmp = NULL;
 	struct model_chain *model_chain_tmp = NULL;
+	char *subscribed_component_tmp = NULL;
 	char *models_tmp = NULL;
 	char *dependency_chain_tmp = NULL;
 	int *ttls_tmp = NULL;
 	char *hook_tmp = NULL;
 	char *view_chain_tmp = NULL;
 	char *p = NULL;
-	int i, j, k;
+	int i, j, k, index;
 
 	DEBUG_PRINT("[ROUTING] Request procedure");
 
 	/*
-	 * we lookup resource first,
+	 * Lookup resource first,
 	 * since we have the capability to response after acquiring the resource.
 	 *
-	 * match the longest resource to topic.
+	 * 1. truncate '?'
+	 * 2. match the longest resource to topic.
 	 */
 	memset(_resource, '\0', RESOURCE_NAME_LEN);
 	strncpy(_resource, topic, RESOURCE_NAME_LEN);
+	/* truncate '?' */
+	p = strrchr(_resource, '?');
+	if (p) *p = '\0';
 	resource = resource_lookup_node_by_name(sanji_resource, _resource);
 	while (!resource) {
 		/* truncate the last fragment */
@@ -918,50 +949,103 @@ int routing_req(
 			*p = '\0';
 			resource = resource_lookup_node_by_name(sanji_resource, _resource);
 		} else {
-			DEBUG_PRINT("Resource not been registered.");
-			return 1;
+			break;
 		}
 	}
+	if (resource) resource_count++;
+	
+	/* Lookup resource list for wildcard '#' */
+	resource_list = resource_lookup_wildcard_nodes_by_name(sanji_resource, topic, &resource_list_count); // MUST FREE return address
+
+	/* combine resource and wildcard resources */
+	if (!resource && !resource_list) {
+		DEBUG_PRINT("Resource not been registered.");
+		return 1;
+	}
+
+	is_duplicate = 0;
+	if (resource_count) {
+		for (i = 0; i < resource_list_count; i++) {
+			if (!strncmp(resource->name, resource_list[i]->name, RESOURCE_NAME_LEN)) {
+				is_duplicate = 1;
+				break;
+			}
+		}
+	}
+	if (!is_duplicate && resource_count) {
+		resource_list_count += resource_count;
+		resource_list_tmp = realloc(resource_list, resource_list_count * sizeof(struct resource *));
+		if (!resource_list_tmp) {
+			DEBUG_PRINT("Error: out of memory");
+			if (resource_list) free(resource_list);
+			return 1;
+		}
+		resource_list = resource_list_tmp;
+		resource_list[resource_list_count - resource_count] = resource;
+	}
+#if (defined DEBUG) || (defined VERBOSE)
+		DEBUG_PRINT("resource list(%d)", resource_list_count);
+		for (i = 0; i < resource_list_count; i++) {
+			DEBUG_PRINT("resource_list(%s)", resource_list[i]->name);
+		}
+#endif
 
 	/* is session inflight */
 	is_inflight = session_is_inflight(sanji_session, id);
 	if (is_inflight < 0) {
 		DEBUG_PRINT("ERROR: sanji session crash.");
-		routing_error_response(resource, id, method, topic, SESSION_CODE_INTERNAL_SERVER_ERROR, "internal server error", NULL);
+		routing_error_response_all(resource_list, resource_list_count, id, method, topic, SESSION_CODE_INTERNAL_SERVER_ERROR, "internal server error", NULL);
+		if (resource_list) free(resource_list);
 		return 1;
 	} else if (is_inflight) {
 		DEBUG_PRINT("Session is inflight.");
-		routing_error_response(resource, id, method, topic, SESSION_CODE_FORBIDDEN, "'id' was used, please use another 'id'", NULL);
+		routing_error_response_all(resource_list, resource_list_count, id, method, topic, SESSION_CODE_FORBIDDEN, "'id' was used, please use another 'id'", NULL);
+		if (resource_list) free(resource_list);
 		return 1;
 	}
 
-	/* is resource locked */
-	is_locked += resource_node_is_locked(resource);
-	if (is_locked) {
-		DEBUG_PRINT("Resource is locked.");
-		routing_error_response(resource, id, method, topic, SESSION_CODE_LOCKED, "resource is locked", NULL);
+	for (index = 0; index < resource_list_count; index++) {
+		/* for each resource in resource list */
+		resource = resource_list[index];
+
+		/* is resource locked */
+		is_locked += resource_node_is_locked(resource);
+		if (is_locked) {
+			DEBUG_PRINT("Resource is locked.");
+			routing_error_response_all(resource_list, resource_list_count, id, method, topic, SESSION_CODE_LOCKED, "resource is locked", NULL);
+			if (subscribed_component) free(subscribed_component);
+			if (resource_list) free(resource_list);
+			return 1;
+		}
+
+		/* allocate subscribed component */
+		_subscribed_count = resource_get_subscribed_count(resource);
+		if (_subscribed_count) {
+			subscribed_count += _subscribed_count;
+			subscribed_component_tmp = (char *)realloc(subscribed_component, subscribed_count * COMPONENT_NAME_LEN);
+			if (!subscribed_component_tmp) {
+				DEBUG_PRINT("ERROR: out of memory");
+				routing_error_response_all(resource_list, resource_list_count, id, method, topic, SESSION_CODE_SERVICE_UNAVAILABLE, "service unavailable", NULL);
+				if (subscribed_component) free(subscribed_component);
+				if (resource_list) free(resource_list);
+				return 1;
+			}
+			subscribed_component = subscribed_component_tmp;
+			memset(subscribed_component + (subscribed_count - _subscribed_count) * COMPONENT_NAME_LEN, '\0', _subscribed_count * COMPONENT_NAME_LEN);
+			memcpy(subscribed_component + (subscribed_count - _subscribed_count) * COMPONENT_NAME_LEN, resource_get_subscribed_component(resource), _subscribed_count * COMPONENT_NAME_LEN);
+		}
+	}
+
+	if (!subscribed_count) {
+		DEBUG_PRINT("Resource not implemented.");
+		routing_error_response_all(resource_list, resource_list_count, id, method, topic, SESSION_CODE_NOT_IMPLEMENTED, "resource is not implemented", NULL);
+		if (resource_list) free(resource_list);
 		return 1;
 	}
 
 	/*
 	 * Start to find model chain and view chain.
 	 */
-	/* allocate subscribed component */
-	subscribed_count = resource_get_subscribed_count(resource);
-	if (!subscribed_count) {
-		DEBUG_PRINT("Resource not implemented.");
-		routing_error_response(resource, id, method, topic, SESSION_CODE_NOT_IMPLEMENTED, "resource is not implemented", NULL);
-		return 1;
-	}
-	subscribed_component = (char *)malloc(subscribed_count * COMPONENT_NAME_LEN);
-	if (!subscribed_component) {
-		DEBUG_PRINT("ERROR: out of memory");
-		routing_error_response(resource, id, method, topic, SESSION_CODE_SERVICE_UNAVAILABLE, "service unavailable", NULL);
-		return 1;
-	}
-	memset(subscribed_component, '\0', subscribed_count * COMPONENT_NAME_LEN);
-	memcpy(subscribed_component, resource_get_subscribed_component(resource), subscribed_count * COMPONENT_NAME_LEN);
-
 	do {
 #if (defined DEBUG) || (defined VERBOSE)
 		DEBUG_PRINT("subscribed_count(%d)", subscribed_count);
@@ -976,12 +1060,13 @@ int routing_req(
 		model_chain_tmp = (struct model_chain *)realloc(model_chain, model_chain_count * sizeof(struct model_chain));
 		if (!model_chain_tmp) {
 			DEBUG_PRINT("ERROR: out of memory");
-			routing_error_response(resource, id, method, topic, SESSION_CODE_SERVICE_UNAVAILABLE, "service unavailable", NULL);
+			routing_error_response_all(resource_list, resource_list_count, id, method, topic, SESSION_CODE_SERVICE_UNAVAILABLE, "service unavailable", NULL);
 			if (model_chain) session_free_model_chain(model_chain, model_chain_count - 1);
 			if (subscribed_component) free(subscribed_component);
 			if (hook_component) free(hook_component);
 			if (dependency_chain) free(dependency_chain);
 			if (view_chain) free(view_chain);
+			if (resource_list) free(resource_list);
 			return 1;
 		}
 		model_chain = model_chain_tmp;
@@ -1006,12 +1091,13 @@ int routing_req(
 				is_locked = component_node_is_locked(component);
 				if (is_locked) {
 					DEBUG_PRINT("ERROR: model is busy.");
-					routing_error_response(resource, id, method, topic, SESSION_CODE_LOCKED, "resource is locked", NULL);
+					routing_error_response_all(resource_list, resource_list_count, id, method, topic, SESSION_CODE_LOCKED, "resource is locked", NULL);
 					if (model_chain) session_free_model_chain(model_chain, model_chain_count);
 					if (subscribed_component) free(subscribed_component);
 					if (hook_component) free(hook_component);
 					if (dependency_chain) free(dependency_chain);
 					if (view_chain) free(view_chain);
+					if (resource_list) free(resource_list);
 					return 1;
 				}
 
@@ -1022,12 +1108,13 @@ int routing_req(
 				models_tmp = (char *)realloc(model_chain_tmp->models, model_chain_tmp->count * COMPONENT_NAME_LEN);
 				if (!models_tmp) {
 					DEBUG_PRINT("ERROR: out of memory");
-					routing_error_response(resource, id, method, topic, SESSION_CODE_SERVICE_UNAVAILABLE, "service unavailable", NULL);
+					routing_error_response_all(resource_list, resource_list_count, id, method, topic, SESSION_CODE_SERVICE_UNAVAILABLE, "service unavailable", NULL);
 					if (model_chain) session_free_model_chain(model_chain, model_chain_count);
 					if (subscribed_component) free(subscribed_component);
 					if (hook_component) free(hook_component);
 					if (dependency_chain) free(dependency_chain);
 					if (view_chain) free(view_chain);
+					if (resource_list) free(resource_list);
 					return 1;
 				}
 				model_chain_tmp->models = models_tmp;
@@ -1038,12 +1125,13 @@ int routing_req(
 				ttls_tmp = (int *)realloc(model_chain_tmp->ttls, model_chain_tmp->count * sizeof(int));
 				if (!ttls_tmp) {
 					DEBUG_PRINT("ERROR: out of memory");
-					routing_error_response(resource, id, method, topic, SESSION_CODE_SERVICE_UNAVAILABLE, "service unavailable", NULL);
+					routing_error_response_all(resource_list, resource_list_count, id, method, topic, SESSION_CODE_SERVICE_UNAVAILABLE, "service unavailable", NULL);
 					if (model_chain) session_free_model_chain(model_chain, model_chain_count);
 					if (subscribed_component) free(subscribed_component);
 					if (hook_component) free(hook_component);
 					if (dependency_chain) free(dependency_chain);
 					if (view_chain) free(view_chain);
+					if (resource_list) free(resource_list);
 					return 1;
 				}
 				model_chain_tmp->ttls = ttls_tmp;
@@ -1068,13 +1156,14 @@ int routing_req(
 								dependency_chain_tmp = (char *)realloc(dependency_chain, last_dependency_count * RESOURCE_NAME_LEN);
 								if (!dependency_chain_tmp) {
 									DEBUG_PRINT("ERROR: out of memory");
-									routing_error_response(resource, id, method, topic, SESSION_CODE_SERVICE_UNAVAILABLE, "service unavailable", NULL);
+									routing_error_response_all(resource_list, resource_list_count, id, method, topic, SESSION_CODE_SERVICE_UNAVAILABLE, "service unavailable", NULL);
 									if (model_chain) session_free_model_chain(model_chain, model_chain_count);
 									if (subscribed_component) free(subscribed_component);
 									if (hook_component) free(hook_component);
 									if (dependency_chain) free(dependency_chain);
 									if (view_chain) free(view_chain);
 									if (_dependency_chain) free(_dependency_chain);
+									if (resource_list) free(resource_list);
 									return 1;
 								}
 								dependency_chain = dependency_chain_tmp;
@@ -1093,13 +1182,14 @@ int routing_req(
 						hook_tmp = (char *)realloc(hook_component, (last_hook_count + hook_count) * COMPONENT_NAME_LEN);
 						if (!hook_tmp) {
 							DEBUG_PRINT("ERROR: out of memory");
-							routing_error_response(resource, id, method, topic, SESSION_CODE_SERVICE_UNAVAILABLE, "service unavailable", NULL);
+							routing_error_response_all(resource_list, resource_list_count, id, method, topic, SESSION_CODE_SERVICE_UNAVAILABLE, "service unavailable", NULL);
 							if (model_chain) session_free_model_chain(model_chain, model_chain_count);
 							if (subscribed_component) free(subscribed_component);
 							if (hook_component) free(hook_component);
 							if (dependency_chain) free(dependency_chain);
 							if (view_chain) free(view_chain);
 							if (_hook_component) free(_hook_component);
+							if (resource_list) free(resource_list);
 							return 1;
 						}
 						hook_component = hook_tmp;
@@ -1121,12 +1211,13 @@ int routing_req(
 				view_chain_tmp = (char *)realloc(view_chain, view_count * COMPONENT_NAME_LEN);
 				if (!view_chain_tmp) {
 					DEBUG_PRINT("ERROR: out of memory");
-					routing_error_response(resource, id, method, topic, SESSION_CODE_SERVICE_UNAVAILABLE, "service unavailable", NULL);
+					routing_error_response_all(resource_list, resource_list_count, id, method, topic, SESSION_CODE_SERVICE_UNAVAILABLE, "service unavailable", NULL);
 					if (model_chain) session_free_model_chain(model_chain, model_chain_count);
 					if (subscribed_component) free(subscribed_component);
 					if (hook_component) free(hook_component);
 					if (dependency_chain) free(dependency_chain);
 					if (view_chain) free(view_chain);
+					if (resource_list) free(resource_list);
 					return 1;
 				}
 				view_chain = view_chain_tmp;
@@ -1153,10 +1244,11 @@ int routing_req(
 	 */
 	if (!model_chain->count) {
 		DEBUG_PRINT("ERROR: Resource has no subscribed model.");
-		routing_error_response(resource, id, method, topic, SESSION_CODE_FORBIDDEN, "request forbidden", "resource has no subscribed model");
+		routing_error_response_all(resource_list, resource_list_count, id, method, topic, SESSION_CODE_FORBIDDEN, "request forbidden", "resource has no subscribed model");
 		if (model_chain) session_free_model_chain(model_chain, model_chain_count);
 		if (dependency_chain) free(dependency_chain);
 		if (view_chain) free(view_chain);
+		if (resource_list) free(resource_list);
 		return 1;
 	}
 
@@ -1164,10 +1256,11 @@ int routing_req(
 	result_chain = json_array();
 	if (!result_chain) {
 		DEBUG_PRINT("ERROR: out of memory");
-		routing_error_response(resource, id, method, topic, SESSION_CODE_SERVICE_UNAVAILABLE, "service unavailable", NULL);
+		routing_error_response_all(resource_list, resource_list_count, id, method, topic, SESSION_CODE_SERVICE_UNAVAILABLE, "service unavailable", NULL);
 		if (model_chain) session_free_model_chain(model_chain, model_chain_count);
 		if (dependency_chain) free(dependency_chain);
 		if (view_chain) free(view_chain);
+		if (resource_list) free(resource_list);
 		return 1;
 	}
 
@@ -1175,11 +1268,12 @@ int routing_req(
 	session_new = session_create_node(id, method, topic, dependency_chain, dependency_count, result_chain, model_chain, model_chain_count, view_chain, view_count);
 	if (!session_new) {
 		DEBUG_PRINT("ERROR: out of memory");
-		routing_error_response(resource, id, method, topic, SESSION_CODE_SERVICE_UNAVAILABLE, "service unavailable", NULL);
+		routing_error_response_all(resource_list, resource_list_count, id, method, topic, SESSION_CODE_SERVICE_UNAVAILABLE, "service unavailable", NULL);
 		if (model_chain) session_free_model_chain(model_chain, model_chain_count);
 		if (dependency_chain) free(dependency_chain);
 		if (view_chain) free(view_chain);
 		if (result_chain) json_decref(result_chain);
+		if (resource_list) free(resource_list);
 		return 1;
 	}
 
@@ -1187,19 +1281,23 @@ int routing_req(
 	if (resource_is_write_like_method(session_new->method)) {
 		if (session_node_lock_by_step(session_new, sanji_resource, sanji_component, 0)) {
 			DEBUG_PRINT("ERROR: session lock error.");
-			routing_error_response(resource, id, method, topic, SESSION_CODE_SERVICE_UNAVAILABLE, "service unavailable", "failed to lock resource");
+			routing_error_response_all(resource_list, resource_list_count, id, method, topic, SESSION_CODE_SERVICE_UNAVAILABLE, "service unavailable", "failed to lock resource");
 			session_node_unlock_by_step(session_new, sanji_resource, sanji_component, 0);
 			if (model_chain) session_free_model_chain(model_chain, model_chain_count);
 			if (view_chain) free(view_chain);
 			if (dependency_chain) free(dependency_chain);
 			if (result_chain) json_decref(result_chain);
 			if (session_new) session_free(session_new);
+			if (resource_list) free(resource_list);
 			return 1;
 		}
 	}
 
 	/* linked to session list */
 	session_add(sanji_session, session_new);
+
+	/* free resource list */
+	if (resource_list) free(resource_list);
 
 #if (defined DEBUG) || (defined VERBOSE)
 	DEBUG_PRINT("dump sessions:");
