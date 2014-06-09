@@ -43,6 +43,7 @@ struct session {
 	unsigned int id;
 	int method;
 	char resource[RESOURCE_NAME_LEN];
+	char tunnel[COMPONENT_TUNNEL_LEN];
 	char *dependency_chain;
 	unsigned int dependency_chain_count;
 	json_t *result_chain;	// include 'code' and 'data'
@@ -55,9 +56,9 @@ struct session {
 };
 
 struct session *session_init();
-struct session *session_create_node(unsigned int, int, char *, char *, unsigned int, json_t *, struct model_chain *, unsigned int, char *, unsigned int);
+struct session *session_create_node(unsigned int, int, char *, char *, char *, unsigned int, json_t *, struct model_chain *, unsigned int, char *, unsigned int);
 int session_add(struct session *, struct session *);
-int session_add_node(struct session *, unsigned int, int, char *, char *, unsigned int, json_t *, struct model_chain *, unsigned int, char *, unsigned int);
+int session_add_node(struct session *, unsigned int, int, char *, char *, char *, unsigned int, json_t *, struct model_chain *, unsigned int, char *, unsigned int);
 struct session *session_lookup_node_by_id(struct session *, unsigned int);
 void session_display(struct session *);
 void session_display_model_chain(struct model_chain *, unsigned int);

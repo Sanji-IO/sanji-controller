@@ -20,6 +20,7 @@ struct session *session_create_node(
 		unsigned int id,
 		int method,
 		char *resource,
+		char *tunnel,
 		char *dependency_chain,
 		unsigned int dependency_chain_count,
 		json_t *result_chain,
@@ -42,6 +43,8 @@ struct session *session_create_node(
 	node->method = method;
 	if (resource) strncpy(node->resource, resource, RESOURCE_NAME_LEN - 1);
 	node->resource[RESOURCE_NAME_LEN - 1] = '\0';
+	if (tunnel) strncpy(node->tunnel, tunnel, COMPONENT_TUNNEL_LEN - 1);
+	node->tunnel[COMPONENT_TUNNEL_LEN - 1] = '\0';
 	if (dependency_chain) node->dependency_chain = dependency_chain;
 	node->dependency_chain_count = dependency_chain_count;
 	if (result_chain) node->result_chain = result_chain;
@@ -72,6 +75,7 @@ int session_add_node(
 		unsigned int id,
 		int method,
 		char *resource,
+		char *tunnel,
 		char *dependency_chain,
 		unsigned int dependency_chain_count,
 		json_t *result_chain,
@@ -88,7 +92,7 @@ int session_add_node(
 		return 1;
 	}
 	
-	node = session_create_node(id, method, resource, dependency_chain, dependency_chain_count, result_chain, model_chain, model_chain_count, view_chain, view_chain_count);
+	node = session_create_node(id, method, resource, tunnel, dependency_chain, dependency_chain_count, result_chain, model_chain, model_chain_count, view_chain, view_chain_count);
 	if  (!node) {
 		fprintf(stderr, "Error: add node failed, out of memory.\n");
 		return 1;
@@ -164,6 +168,7 @@ void session_display(struct session *head)
 			fprintf(stderr, "\tid(%u)\n", curr->id);
 			fprintf(stderr, "\tmethod(%d)\n", curr->method);
 			fprintf(stderr, "\tresource(%s)\n", curr->resource);
+			fprintf(stderr, "\ttunnel(%s)\n", curr->tunnel);
 			/* display dependency chain */
 			session_display_dependency_chain(curr->dependency_chain, curr->dependency_chain_count);
 			fprintf(stderr, "\tdependency_chain_count(%d)\n", curr->dependency_chain_count);
@@ -472,7 +477,7 @@ int session_step_stop(
 	}
 
 	/* dump response context */
-	if (node->view_chain_count) {
+	if (node->view_chain_count || (strlen(node->tunnel) > 0)) {
 		packet_context = json_dumps(response_root, JSON_INDENT(4));
 		if (!packet_context) {
 			DEBUG_PRINT("Error: out of memory");
@@ -483,13 +488,19 @@ int session_step_stop(
 	}
 	if (!root) json_decref(response_root);
 
-	/* publish to all views */
 	ud = (struct sanji_userdata *)obj;
-	for (i = 0; i < node->view_chain_count; i++) {
-		view = node->view_chain + i * COMPONENT_NAME_LEN;
-		tunnel = component_get_tunnel_by_name(component_list, view);
-		DEBUG_PRINT("session(%d) sends to view(%s) with tunnel(%s).", node->id, view, tunnel);
-		mosquitto_publish(mosq, &ud->mid_sent, tunnel, packet_context_len, packet_context, ud->qos_sent, ud->retain_sent);
+	if (strlen(node->tunnel) > 0) {
+		/* if we get 'code->tunnel', ONLY response to it */
+		DEBUG_PRINT("session(%d) sends to single tunnel(%s).", node->id, node->tunnel);
+		mosquitto_publish(mosq, &ud->mid_sent, node->tunnel, packet_context_len, packet_context, ud->qos_sent, ud->retain_sent);
+	} else {
+		/* response to all views */
+		for (i = 0; i < node->view_chain_count; i++) {
+			view = node->view_chain + i * COMPONENT_NAME_LEN;
+			tunnel = component_get_tunnel_by_name(component_list, view);
+			DEBUG_PRINT("session(%d) sends to view(%s) with tunnel(%s).", node->id, view, tunnel);
+			mosquitto_publish(mosq, &ud->mid_sent, tunnel, packet_context_len, packet_context, ud->qos_sent, ud->retain_sent);
+		}
 	}
 	if (packet_context) {
 		DEBUG_PRINT("%s", packet_context);

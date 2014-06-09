@@ -1,6 +1,6 @@
 #!/bin/sh
 
-source ../functional_test/testcase_config
+source testcase_config
 MQTT_SERVER_IP=127.0.0.1
 
 ###################################################

@@ -39,10 +39,9 @@ struct mosquitto *mosq = NULL;
 struct sanji_userdata *ud = NULL;
 
 /* listened topics */
-char sanji_register_topic[] = SANJI_REGISTER_TOPIC;
-char sanji_register_all_topic[] = SANJI_REGISTER_ALL_TOPIC;
 char sanji_controller_topic[] = SANJI_CONTROLLER_TOPIC;
-char sanji_controller_all_topic[] = SANJI_CONTROLLER_ALL_TOPIC;
+char sanji_register_topic[] = SANJI_REGISTER_TOPIC;
+char sanji_dependency_topic[] = SANJI_RESOURCE_DEPENDENCY_TOPIC;
 
 static int sanji_run = 1;
 
@@ -304,7 +303,6 @@ int sanji_error_response(
  * SANJI REGISTER PROCEDURE
  */
 int register_error_response(
-		char *tunnel,
 		unsigned int id,
 		int method,
 		char *topic,
@@ -312,15 +310,12 @@ int register_error_response(
 		char *message,
 		char *log)
 {
-	if (!tunnel || (strlen(tunnel) <= 0)) return 1;
-
-	sanji_error_response(tunnel, id, method, topic, SANJI_CONTROLLER_NAME, status_code, message, log);
+	sanji_error_response(sanji_controller_topic, id, method, topic, SANJI_CONTROLLER_NAME, status_code, message, log);
 
 	return 0;
 }
 
 int register_response(
-		char *_tunnel,
 		unsigned int id,
 		int method,
 		char *topic,
@@ -333,8 +328,6 @@ int register_response(
 	json_t *data = NULL;
 	char *_method = NULL;
 	char *context = NULL;
-
-	if (!tunnel || (strlen(tunnel) <= 0)) return 1;
 
 	/* create json reponse context */
 	response_root = json_object();
@@ -381,8 +374,9 @@ int register_response(
 	}
 	json_decref(response_root);
 
-	/* publish a response */
-	_sanji_response(_tunnel, context);
+	/* publish response */
+	_sanji_response(sanji_controller_topic, context);
+
 	free(context);
 
 	return 0;
@@ -458,14 +452,13 @@ int register_create(char *name, char *description, char *role, char *hook, unsig
 	return SESSION_CODE_OK;
 }
 
-int register_delete(char *name, char *tunnel, char *message, char *log)
+int register_delete(char *name, char *message, char *log)
 {
 	int is_locked = 0;
 	int is_registered = 0;
 
 	memset(message, '\0', SANJI_MESSAGE_LEN);
 	memset(log, '\0', SANJI_MESSAGE_LEN);
-	memset(tunnel, '\0', COMPONENT_TUNNEL_LEN);
 
 	if (!name) {
 		strncpy(message, "internal server error", SANJI_MESSAGE_LEN);
@@ -481,9 +474,6 @@ int register_delete(char *name, char *tunnel, char *message, char *log)
 		DEBUG_PRINT("'%s' has NOT been registered.", name);
 		return SESSION_CODE_OK;
 	}
-
-	/* get 'tunnel' from component list */
-	strncpy(tunnel, component_get_tunnel_by_name(sanji_component, name), COMPONENT_TUNNEL_LEN);
 
 	/* check whether if one of resources/components is locked */
 	is_locked += component_is_locked(sanji_component, name);
@@ -531,8 +521,6 @@ int register_procedure(
 	/* request data */
 	char name[COMPONENT_NAME_LEN];
 	char description[COMPONENT_DESCRIPTION_LEN];
-	char _tunnel[COMPONENT_TUNNEL_LEN];
-	char tunnel[COMPONENT_TUNNEL_LEN];
 	char role[COMPONENT_ROLE_LEN];
 	json_t *_hook = NULL;			// hook array
 	char *hook = NULL;
@@ -543,6 +531,7 @@ int register_procedure(
 	unsigned int resources_count = 0;
 	/* response data */
 	int status_code;
+	char tunnel[COMPONENT_TUNNEL_LEN];
 	char message[SANJI_MESSAGE_LEN];
 	char log[SANJI_MESSAGE_LEN];
 	/* others */
@@ -553,40 +542,31 @@ int register_procedure(
 
 	/*
 	 * Validate context content
-	 * 	1.  'CREATE' method with no 'data'.
+	 * 	1. 'resource' is not '/controller/registration'
+	 * 	2. 'CREATE' method with no 'data'.
 	 */
+	if ((strlen(topic) < SANJI_REGISTER_TOPIC_LEN)
+			|| (strncmp(topic, SANJI_REGISTER_TOPIC, SANJI_REGISTER_TOPIC_LEN))) {
+		DEBUG_PRINT("ERROR: resource didn't match.");
+		register_error_response(id, method, topic, SESSION_CODE_BAD_REQUEST, "wrong register context", "'resource' didn't match");
+	}
 	if (method == RESOURCE_METHOD_CREATE && !data) {
 		DEBUG_PRINT("ERROR: 'CREATE' method with no 'data'.");
+		register_error_response(id, method, topic, SESSION_CODE_BAD_REQUEST, "wrong register context", "Need 'data'");
 		return 1;
-	}
-
-	/*
-	 * We acquire 'tunnel' first,
-	 * because we can response error back after acquiring 'tunnel'.
-	 */
-	memset(_tunnel, '\0', COMPONENT_TUNNEL_LEN);
-	if (method == RESOURCE_METHOD_CREATE) {
-		tmp = json_object_get(data, "tunnel");
-		if (tmp && json_is_string(tmp) && (strlen(json_string_value(tmp)) > 0)) {
-			strncpy(_tunnel, json_string_value(tmp), COMPONENT_TUNNEL_LEN);
-			_tunnel[COMPONENT_TUNNEL_LEN - 1] = '\0';
-			DEBUG_PRINT("tunnel: '%s'", _tunnel);
-		} else {
-			DEBUG_PRINT("ERROR: wrong sanji packet, no 'tunnel'.");
-			return 1;
-		}
 	}
 
 	/* acquire 'name' from topic or data */
 	memset(name, '\0', COMPONENT_NAME_LEN);
 	if (method == RESOURCE_METHOD_CREATE || method == RESOURCE_METHOD_DELETE) {
 		if (strlen(topic) > SANJI_REGISTER_TOPIC_LEN) {
-			if (!strchr(&topic[SANJI_REGISTER_TOPIC_LEN + 1], '/')) {
+			if (topic[SANJI_REGISTER_TOPIC_LEN] == '/') {
 				strncpy(name, &topic[SANJI_REGISTER_TOPIC_LEN + 1], COMPONENT_NAME_LEN);
 				name[COMPONENT_NAME_LEN - 1] = '\0';
 				DEBUG_PRINT("name: '%s'", name);
 			} else {
-				DEBUG_PRINT("ERROR: wrong register topic");
+				DEBUG_PRINT("ERROR: resource didn't match.");
+				register_error_response(id, method, topic, SESSION_CODE_BAD_REQUEST, "wrong register context", "'resource' didn't match");
 				return 1;
 			}
 		} else {
@@ -598,6 +578,7 @@ int register_procedure(
 				DEBUG_PRINT("name: '%s'", name);
 			} else {
 				DEBUG_PRINT("ERROR: wrong sanji packet, no 'name'.");
+				register_error_response(id, method, topic, SESSION_CODE_BAD_REQUEST, "wrong register context", "no 'name'");
 				return 1;
 			}
 		}
@@ -618,7 +599,7 @@ int register_procedure(
 			DEBUG_PRINT("description: '%s'", description);
 		} else {
 			DEBUG_PRINT("ERROR: wrong sanji packet, no 'description'.");
-			register_error_response(_tunnel, id, method, topic, SESSION_CODE_BAD_REQUEST, "wrong register context", "need 'description'");
+			register_error_response(id, method, topic, SESSION_CODE_BAD_REQUEST, "wrong register context", "need 'description'");
 			return 1;
 		}
 
@@ -631,7 +612,7 @@ int register_procedure(
 			DEBUG_PRINT("role: '%s'", role);
 		} else {
 			DEBUG_PRINT("ERROR: wrong sanji packet, no 'role'.");
-			register_error_response(_tunnel, id, method, topic, SESSION_CODE_BAD_REQUEST, "wrong register context", "need 'role'");
+			register_error_response(id, method, topic, SESSION_CODE_BAD_REQUEST, "wrong register context", "need 'role'");
 			return 1;
 		}
 
@@ -645,7 +626,7 @@ int register_procedure(
 					hook = (char *)malloc(hook_count * sizeof(char) * COMPONENT_NAME_LEN);
 					if (!hook) {
 						DEBUG_PRINT("ERROR: out of memory");
-						register_error_response(_tunnel, id, method, topic, SESSION_CODE_SERVICE_UNAVAILABLE, "service unavailable", NULL);
+						register_error_response(id, method, topic, SESSION_CODE_SERVICE_UNAVAILABLE, "service unavailable", NULL);
 						return 1;
 					}
 					for (i = 0; i < hook_count; i++) {
@@ -655,7 +636,7 @@ int register_procedure(
 							hook[(i + 1) * COMPONENT_NAME_LEN - 1] = '\0';
 						} else {
 							DEBUG_PRINT("ERROR: wrong sanji packet, empty 'hook'.");
-							register_error_response(_tunnel, id, method, topic, SESSION_CODE_BAD_REQUEST, "wrong register context", "empty 'hook'");
+							register_error_response(id, method, topic, SESSION_CODE_BAD_REQUEST, "wrong register context", "empty 'hook'");
 							if (hook) free(hook);
 							return 1;
 						}
@@ -669,7 +650,7 @@ int register_procedure(
 					hook[COMPONENT_ROLE_LEN - 1] = '\0';
 				} else {
 					DEBUG_PRINT("ERROR: wrong sanji packet, empty 'hook'.");
-					register_error_response(_tunnel, id, method, topic, SESSION_CODE_BAD_REQUEST, "wrong register context", "empty 'hook'");
+					register_error_response(id, method, topic, SESSION_CODE_BAD_REQUEST, "wrong register context", "empty 'hook'");
 					if (hook) free(hook);
 					return 1;
 				}
@@ -683,7 +664,7 @@ int register_procedure(
 			DEBUG_PRINT("ttl: '%d'", ttl);
 		} else {
 			DEBUG_PRINT("ERROR: wrong sanji packet, no 'ttl'.");
-			register_error_response(_tunnel, id, method, topic, SESSION_CODE_BAD_REQUEST, "wrong register context", "need 'ttl'");
+			register_error_response(id, method, topic, SESSION_CODE_BAD_REQUEST, "wrong register context", "need 'ttl'");
 			if (hook) free(hook);
 			return 1;
 		}
@@ -696,7 +677,7 @@ int register_procedure(
 				resources_count = json_array_size(_resources);
 				if (!resources_count) {
 					DEBUG_PRINT("ERROR: wrong sanji packet, empty 'resources'.");
-					register_error_response(_tunnel, id, method, topic, SESSION_CODE_BAD_REQUEST, "wrong register context", "empty 'resources'");
+					register_error_response(id, method, topic, SESSION_CODE_BAD_REQUEST, "wrong register context", "empty 'resources'");
 					if (hook) free(hook);
 					return 1;
 				}
@@ -704,7 +685,7 @@ int register_procedure(
 				if (!resources) {
 					DEBUG_PRINT("ERROR: out of memory");
 					if (hook) free(hook);
-					register_error_response(_tunnel, id, method, topic, SESSION_CODE_SERVICE_UNAVAILABLE, "service unavailable", NULL);
+					register_error_response(id, method, topic, SESSION_CODE_SERVICE_UNAVAILABLE, "service unavailable", NULL);
 					return 1;
 				}
 				for (i = 0; i < resources_count; i++) {
@@ -714,7 +695,7 @@ int register_procedure(
 						resources[(i + 1) * COMPONENT_NAME_LEN - 1] = '\0';
 					} else {
 						DEBUG_PRINT("ERROR: wrong sanji packet, empty 'resources'.");
-						register_error_response(_tunnel, id, method, topic, SESSION_CODE_BAD_REQUEST, "wrong register context", "empty 'resources'");
+						register_error_response(id, method, topic, SESSION_CODE_BAD_REQUEST, "wrong register context", "empty 'resources'");
 						if (hook) free(hook);
 						if (resources) free(resources);
 						return 1;
@@ -728,7 +709,7 @@ int register_procedure(
 					resources[COMPONENT_ROLE_LEN - 1] = '\0';
 				} else {
 					DEBUG_PRINT("ERROR: wrong sanji packet, empty 'resources'.");
-					register_error_response(_tunnel, id, method, topic, SESSION_CODE_BAD_REQUEST, "wrong register context", "empty 'resources'");
+					register_error_response(id, method, topic, SESSION_CODE_BAD_REQUEST, "wrong register context", "empty 'resources'");
 					if (hook) free(hook);
 					if (resources) free(resources);
 					return 1;
@@ -736,7 +717,7 @@ int register_procedure(
 			}
 		} else {
 			DEBUG_PRINT("ERROR: wrong sanji packet, no 'resources'.");
-			register_error_response(_tunnel, id, method, topic, SESSION_CODE_BAD_REQUEST, "wrong register context", "Need 'resources'");
+			register_error_response(id, method, topic, SESSION_CODE_BAD_REQUEST, "wrong register context", "Need 'resources'");
 			if (hook) free(hook);
 			return 1;
 		}
@@ -744,9 +725,9 @@ int register_procedure(
 		/* create registeration */
 		status_code = register_create(name, description, role, hook, hook_count, ttl, resources, resources_count, tunnel, message, log);
 		if (status_code == SESSION_CODE_OK) {
-			register_response(_tunnel, id,  method, topic, status_code, tunnel);
+			register_response(id, method, topic, status_code, tunnel);
 		} else {
-			register_error_response(_tunnel, id, method, topic, status_code, message, log);
+			register_error_response(id, method, topic, status_code, message, log);
 		}
 
 		break;
@@ -754,11 +735,11 @@ int register_procedure(
 	case RESOURCE_METHOD_READ:
 		DEBUG_PRINT("[REGISTER] read method");
 
+		/* TODO */
+
 		/* read registeration */
 		DEBUG_PRINT("read method is not implemented.");
-
-		/* We CANNOT get tunnel, so we CANNOT response error */
-		register_error_response(_tunnel, id, method, topic, SESSION_CODE_METHOD_NOT_ALLOWED, "method not allowed", NULL);
+		register_error_response(id, method, topic, SESSION_CODE_METHOD_NOT_ALLOWED, "method not allowed", NULL);
 
 		break;
 
@@ -767,9 +748,7 @@ int register_procedure(
 
 		/* update registeration */
 		DEBUG_PRINT("update method is not implemented.");
-
-		/* we CANNOT get tunnel, so we CANNOT response error */
-		register_error_response(_tunnel, id, method, topic, SESSION_CODE_METHOD_NOT_ALLOWED, "method not allowed", NULL);
+		register_error_response(id, method, topic, SESSION_CODE_METHOD_NOT_ALLOWED, "method not allowed", NULL);
 
 		break;
 
@@ -777,18 +756,14 @@ int register_procedure(
 		DEBUG_PRINT("[REGISTER] delete method");
 
 		/* delete registeration */
-		status_code = register_delete(name, tunnel, message, log);
-
-		/* if component is registered then we can get the tunnel */
-		if (strlen(tunnel) > 0) {
-			register_error_response(tunnel, id, method, topic, status_code, message, log);
-		}
+		status_code = register_delete(name, message, log);
+		register_error_response(id, method, topic, status_code, message, log);
 
 		break;
 
 	default:
 		DEBUG_PRINT("[REGISTER] unknown method");
-		register_error_response(_tunnel, id, method, topic, SESSION_CODE_METHOD_NOT_ALLOWED, "method not allowed", NULL);
+		register_error_response(id, method, topic, SESSION_CODE_METHOD_NOT_ALLOWED, "method not allowed", NULL);
 		break;
 	}
 
@@ -856,6 +831,7 @@ int routing_error_response(
 }
 
 int routing_error_response_all(
+		char *tunnel,
 		struct resource *resource[],
 		unsigned int resource_count,
 		unsigned int id,
@@ -867,6 +843,12 @@ int routing_error_response_all(
 {
 	int i;
 	int ret;
+
+	/* if we get 'tunnel', ONLY response to this 'tunnel' */
+	if (tunnel && (strlen(tunnel) > 0)) {
+		sanji_error_response(tunnel, id, method, topic, SANJI_CONTROLLER_NAME, status_code, message, log);
+		return 0;
+	}
 
 	for (i = 0; i < resource_count; i++) {
 		ret = routing_error_response(resource[i], id, method, topic, status_code, message, log);
@@ -881,6 +863,7 @@ int routing_req(
 		unsigned int id,
 		int method,
 		char *topic,
+		char *tunnel,
 		int code,
 		json_t *data)
 {
@@ -960,6 +943,7 @@ int routing_req(
 	/* combine resource and wildcard resources */
 	if (!resource && !resource_list) {
 		DEBUG_PRINT("Resource not been registered.");
+		routing_error_response_all(tunnel, resource_list, resource_list_count, id, method, topic, SESSION_CODE_INTERNAL_SERVER_ERROR, "internal server error", NULL);
 		return 1;
 	}
 
@@ -994,12 +978,12 @@ int routing_req(
 	is_inflight = session_is_inflight(sanji_session, id);
 	if (is_inflight < 0) {
 		DEBUG_PRINT("ERROR: sanji session crash.");
-		routing_error_response_all(resource_list, resource_list_count, id, method, topic, SESSION_CODE_INTERNAL_SERVER_ERROR, "internal server error", NULL);
+		routing_error_response_all(tunnel, resource_list, resource_list_count, id, method, topic, SESSION_CODE_INTERNAL_SERVER_ERROR, "internal server error", NULL);
 		if (resource_list) free(resource_list);
 		return 1;
 	} else if (is_inflight) {
 		DEBUG_PRINT("Session is inflight.");
-		routing_error_response_all(resource_list, resource_list_count, id, method, topic, SESSION_CODE_FORBIDDEN, "'id' was used, please use another 'id'", NULL);
+		routing_error_response_all(tunnel, resource_list, resource_list_count, id, method, topic, SESSION_CODE_FORBIDDEN, "'id' was used, please use another 'id'", NULL);
 		if (resource_list) free(resource_list);
 		return 1;
 	}
@@ -1012,7 +996,7 @@ int routing_req(
 		is_locked += resource_node_is_locked(resource);
 		if (is_locked) {
 			DEBUG_PRINT("Resource is locked.");
-			routing_error_response_all(resource_list, resource_list_count, id, method, topic, SESSION_CODE_LOCKED, "resource is locked", NULL);
+			routing_error_response_all(tunnel, resource_list, resource_list_count, id, method, topic, SESSION_CODE_LOCKED, "resource is locked", NULL);
 			if (subscribed_component) free(subscribed_component);
 			if (resource_list) free(resource_list);
 			return 1;
@@ -1025,7 +1009,7 @@ int routing_req(
 			subscribed_component_tmp = (char *)realloc(subscribed_component, subscribed_count * COMPONENT_NAME_LEN);
 			if (!subscribed_component_tmp) {
 				DEBUG_PRINT("ERROR: out of memory");
-				routing_error_response_all(resource_list, resource_list_count, id, method, topic, SESSION_CODE_SERVICE_UNAVAILABLE, "service unavailable", NULL);
+				routing_error_response_all(tunnel, resource_list, resource_list_count, id, method, topic, SESSION_CODE_SERVICE_UNAVAILABLE, "service unavailable", NULL);
 				if (subscribed_component) free(subscribed_component);
 				if (resource_list) free(resource_list);
 				return 1;
@@ -1038,7 +1022,7 @@ int routing_req(
 
 	if (!subscribed_count) {
 		DEBUG_PRINT("Resource not implemented.");
-		routing_error_response_all(resource_list, resource_list_count, id, method, topic, SESSION_CODE_NOT_IMPLEMENTED, "resource is not implemented", NULL);
+		routing_error_response_all(tunnel, resource_list, resource_list_count, id, method, topic, SESSION_CODE_NOT_IMPLEMENTED, "resource is not implemented", NULL);
 		if (resource_list) free(resource_list);
 		return 1;
 	}
@@ -1060,7 +1044,7 @@ int routing_req(
 		model_chain_tmp = (struct model_chain *)realloc(model_chain, model_chain_count * sizeof(struct model_chain));
 		if (!model_chain_tmp) {
 			DEBUG_PRINT("ERROR: out of memory");
-			routing_error_response_all(resource_list, resource_list_count, id, method, topic, SESSION_CODE_SERVICE_UNAVAILABLE, "service unavailable", NULL);
+			routing_error_response_all(tunnel, resource_list, resource_list_count, id, method, topic, SESSION_CODE_SERVICE_UNAVAILABLE, "service unavailable", NULL);
 			if (model_chain) session_free_model_chain(model_chain, model_chain_count - 1);
 			if (subscribed_component) free(subscribed_component);
 			if (hook_component) free(hook_component);
@@ -1091,7 +1075,7 @@ int routing_req(
 				is_locked = component_node_is_locked(component);
 				if (is_locked) {
 					DEBUG_PRINT("ERROR: model is busy.");
-					routing_error_response_all(resource_list, resource_list_count, id, method, topic, SESSION_CODE_LOCKED, "resource is locked", NULL);
+					routing_error_response_all(tunnel, resource_list, resource_list_count, id, method, topic, SESSION_CODE_LOCKED, "resource is locked", NULL);
 					if (model_chain) session_free_model_chain(model_chain, model_chain_count);
 					if (subscribed_component) free(subscribed_component);
 					if (hook_component) free(hook_component);
@@ -1108,7 +1092,7 @@ int routing_req(
 				models_tmp = (char *)realloc(model_chain_tmp->models, model_chain_tmp->count * COMPONENT_NAME_LEN);
 				if (!models_tmp) {
 					DEBUG_PRINT("ERROR: out of memory");
-					routing_error_response_all(resource_list, resource_list_count, id, method, topic, SESSION_CODE_SERVICE_UNAVAILABLE, "service unavailable", NULL);
+					routing_error_response_all(tunnel, resource_list, resource_list_count, id, method, topic, SESSION_CODE_SERVICE_UNAVAILABLE, "service unavailable", NULL);
 					if (model_chain) session_free_model_chain(model_chain, model_chain_count);
 					if (subscribed_component) free(subscribed_component);
 					if (hook_component) free(hook_component);
@@ -1125,7 +1109,7 @@ int routing_req(
 				ttls_tmp = (int *)realloc(model_chain_tmp->ttls, model_chain_tmp->count * sizeof(int));
 				if (!ttls_tmp) {
 					DEBUG_PRINT("ERROR: out of memory");
-					routing_error_response_all(resource_list, resource_list_count, id, method, topic, SESSION_CODE_SERVICE_UNAVAILABLE, "service unavailable", NULL);
+					routing_error_response_all(tunnel, resource_list, resource_list_count, id, method, topic, SESSION_CODE_SERVICE_UNAVAILABLE, "service unavailable", NULL);
 					if (model_chain) session_free_model_chain(model_chain, model_chain_count);
 					if (subscribed_component) free(subscribed_component);
 					if (hook_component) free(hook_component);
@@ -1156,7 +1140,7 @@ int routing_req(
 								dependency_chain_tmp = (char *)realloc(dependency_chain, last_dependency_count * RESOURCE_NAME_LEN);
 								if (!dependency_chain_tmp) {
 									DEBUG_PRINT("ERROR: out of memory");
-									routing_error_response_all(resource_list, resource_list_count, id, method, topic, SESSION_CODE_SERVICE_UNAVAILABLE, "service unavailable", NULL);
+									routing_error_response_all(tunnel, resource_list, resource_list_count, id, method, topic, SESSION_CODE_SERVICE_UNAVAILABLE, "service unavailable", NULL);
 									if (model_chain) session_free_model_chain(model_chain, model_chain_count);
 									if (subscribed_component) free(subscribed_component);
 									if (hook_component) free(hook_component);
@@ -1182,7 +1166,7 @@ int routing_req(
 						hook_tmp = (char *)realloc(hook_component, (last_hook_count + hook_count) * COMPONENT_NAME_LEN);
 						if (!hook_tmp) {
 							DEBUG_PRINT("ERROR: out of memory");
-							routing_error_response_all(resource_list, resource_list_count, id, method, topic, SESSION_CODE_SERVICE_UNAVAILABLE, "service unavailable", NULL);
+							routing_error_response_all(tunnel, resource_list, resource_list_count, id, method, topic, SESSION_CODE_SERVICE_UNAVAILABLE, "service unavailable", NULL);
 							if (model_chain) session_free_model_chain(model_chain, model_chain_count);
 							if (subscribed_component) free(subscribed_component);
 							if (hook_component) free(hook_component);
@@ -1211,7 +1195,7 @@ int routing_req(
 				view_chain_tmp = (char *)realloc(view_chain, view_count * COMPONENT_NAME_LEN);
 				if (!view_chain_tmp) {
 					DEBUG_PRINT("ERROR: out of memory");
-					routing_error_response_all(resource_list, resource_list_count, id, method, topic, SESSION_CODE_SERVICE_UNAVAILABLE, "service unavailable", NULL);
+					routing_error_response_all(tunnel, resource_list, resource_list_count, id, method, topic, SESSION_CODE_SERVICE_UNAVAILABLE, "service unavailable", NULL);
 					if (model_chain) session_free_model_chain(model_chain, model_chain_count);
 					if (subscribed_component) free(subscribed_component);
 					if (hook_component) free(hook_component);
@@ -1244,7 +1228,7 @@ int routing_req(
 	 */
 	if (!model_chain->count) {
 		DEBUG_PRINT("ERROR: Resource has no subscribed model.");
-		routing_error_response_all(resource_list, resource_list_count, id, method, topic, SESSION_CODE_FORBIDDEN, "request forbidden", "resource has no subscribed model");
+		routing_error_response_all(tunnel, resource_list, resource_list_count, id, method, topic, SESSION_CODE_FORBIDDEN, "request forbidden", "resource has no subscribed model");
 		if (model_chain) session_free_model_chain(model_chain, model_chain_count);
 		if (dependency_chain) free(dependency_chain);
 		if (view_chain) free(view_chain);
@@ -1256,7 +1240,7 @@ int routing_req(
 	result_chain = json_array();
 	if (!result_chain) {
 		DEBUG_PRINT("ERROR: out of memory");
-		routing_error_response_all(resource_list, resource_list_count, id, method, topic, SESSION_CODE_SERVICE_UNAVAILABLE, "service unavailable", NULL);
+		routing_error_response_all(tunnel, resource_list, resource_list_count, id, method, topic, SESSION_CODE_SERVICE_UNAVAILABLE, "service unavailable", NULL);
 		if (model_chain) session_free_model_chain(model_chain, model_chain_count);
 		if (dependency_chain) free(dependency_chain);
 		if (view_chain) free(view_chain);
@@ -1265,10 +1249,10 @@ int routing_req(
 	}
 
 	/* create new session */
-	session_new = session_create_node(id, method, topic, dependency_chain, dependency_count, result_chain, model_chain, model_chain_count, view_chain, view_count);
+	session_new = session_create_node(id, method, topic, tunnel, dependency_chain, dependency_count, result_chain, model_chain, model_chain_count, view_chain, view_count);
 	if (!session_new) {
 		DEBUG_PRINT("ERROR: out of memory");
-		routing_error_response_all(resource_list, resource_list_count, id, method, topic, SESSION_CODE_SERVICE_UNAVAILABLE, "service unavailable", NULL);
+		routing_error_response_all(tunnel, resource_list, resource_list_count, id, method, topic, SESSION_CODE_SERVICE_UNAVAILABLE, "service unavailable", NULL);
 		if (model_chain) session_free_model_chain(model_chain, model_chain_count);
 		if (dependency_chain) free(dependency_chain);
 		if (view_chain) free(view_chain);
@@ -1281,7 +1265,7 @@ int routing_req(
 	if (resource_is_write_like_method(session_new->method)) {
 		if (session_node_lock_by_step(session_new, sanji_resource, sanji_component, 0)) {
 			DEBUG_PRINT("ERROR: session lock error.");
-			routing_error_response_all(resource_list, resource_list_count, id, method, topic, SESSION_CODE_SERVICE_UNAVAILABLE, "service unavailable", "failed to lock resource");
+			routing_error_response_all(tunnel, resource_list, resource_list_count, id, method, topic, SESSION_CODE_SERVICE_UNAVAILABLE, "service unavailable", "failed to lock resource");
 			session_node_unlock_by_step(session_new, sanji_resource, sanji_component, 0);
 			if (model_chain) session_free_model_chain(model_chain, model_chain_count);
 			if (view_chain) free(view_chain);
@@ -1338,6 +1322,7 @@ int routing_procedure(
 		unsigned int id,
 		int method,
 		char *topic,
+		char *tunnel,
 		json_t *sign,
 		int code,
 		json_t *data)
@@ -1354,7 +1339,7 @@ int routing_procedure(
 	/* branch to request/response procedure */
 	if (code < 0) {
 		/* request procedure */
-		routing_req(root, id, method, topic, code, data);
+		routing_req(root, id, method, topic, tunnel, code, data);
 
 	} else {
 		/* response procedure */
@@ -1365,7 +1350,7 @@ int routing_procedure(
 	return 0;
 }
 
-int sanji_parse_context(char *context, json_t **root, unsigned int *id, int *method, char *resource, json_t **sign, int *code, json_t **data)
+int sanji_parse_context(char *context, json_t **root, unsigned int *id, int *method, char *resource, char *tunnel, json_t **sign, int *code, json_t **data)
 {
 	json_error_t error;
 	json_t *tmp = NULL;
@@ -1406,6 +1391,15 @@ int sanji_parse_context(char *context, json_t **root, unsigned int *id, int *met
 		DEBUG_PRINT("resource: '%s'", resource);
 	}
 
+	/* get tunnel from json context */
+	memset(tunnel, '\0', COMPONENT_TUNNEL_LEN);
+	tmp = json_object_get(*root, "tunnel");
+	if (tmp && json_is_string(tmp)) {
+		strncpy(tunnel, json_string_value(tmp), COMPONENT_TUNNEL_LEN);
+		tunnel[COMPONENT_TUNNEL_LEN - 1] = '\0';
+		DEBUG_PRINT("tunnel: '%s'", tunnel);
+	}
+
 	/* get sign from json context */
 	tmp = json_object_get(*root, "sign");
 	if (tmp && json_is_array(tmp)) {
@@ -1430,17 +1424,17 @@ int sanji_parse_context(char *context, json_t **root, unsigned int *id, int *met
 	return SANJI_SUCCESS;
 }
 
-int sanji_dispatch_context(char *context, unsigned int context_len)
+int sanji_dispatch_context(char *topic, char *context, unsigned int context_len)
 {
 	/* sanji context content */
 	json_t *root = NULL;
 	unsigned int id = 0;				// '0'	means 'no data'
 	int method = -2;					// '-2' means 'no data'
 	char resource[RESOURCE_NAME_LEN];
+	char tunnel[COMPONENT_TUNNEL_LEN];
 	json_t *sign = NULL;
 	int code = -1;						// '-1' means 'no data'
 	json_t *data = NULL;
-	int procedure = 0;					// 0: routing, 1: register, 2: lookup resource dependency
 
 	DEBUG_PRINT("[DISPATCH]");
 
@@ -1451,7 +1445,7 @@ int sanji_dispatch_context(char *context, unsigned int context_len)
 	}
 
 	/* parse arguments to sanji context content */
-	if (sanji_parse_context(context, &root, &id, &method, resource, &sign, &code, &data)) {
+	if (sanji_parse_context(context, &root, &id, &method, resource, tunnel, &sign, &code, &data)) {
 		DEBUG_PRINT("ERROR: failed to parse sanji context content.");
 		if (root) json_decref(root);
 		return SANJI_DATA_ERROR;
@@ -1475,55 +1469,21 @@ int sanji_dispatch_context(char *context, unsigned int context_len)
 		}
 	}
 
-	/* 
+	/*
 	 * start processing context
-	 * 	0. routing procedure
-	 *
-	 *  1. register procedure
-	 *       - resource is '/controller/registration'
-	 *       - resource is '/controller/registration/{id}'
-	 *       - must NOT have 'code', since only accept 'request', nothing with 'response'
-	 *
-	 *	2. lookup resource dependency procedure
-	 *	     - resource is '/controller/resource/dependency'
-	 *	     - resource is '/controller/resource/dependency/{id}'
-	 *	     - resource is '/controller/resource/dependency?key=value'
-	 *       - must NOT have 'code', since only accept 'request', nothing with 'response'
+	 * 	1. routing procedure (/controller)
+	 *  2. register procedure (/controller/registration)
+	 *	3. lookup resource dependency procedure (/controller/resource/dependency)
 	 */
-	
-	/* register procedure */
-	if (!strncmp(SANJI_REGISTER_TOPIC, resource, SANJI_REGISTER_TOPIC_LEN)
-			&& ((strlen(resource) == SANJI_REGISTER_TOPIC_LEN)
-				|| (resource[SANJI_REGISTER_TOPIC_LEN] == '/'))) {
-		if (code < 0) {
-			procedure = 1;
-		}
-	}
-
-	/* lookup resource dependency procedure */
-	if (!strncmp(SANJI_RESOURCE_DEPENDENCY_TOPIC, resource, SANJI_RESOURCE_DEPENDENCY_TOPIC_LEN)
-			&& ((strlen(resource) == SANJI_RESOURCE_DEPENDENCY_TOPIC_LEN)
-				|| (resource[SANJI_RESOURCE_DEPENDENCY_TOPIC_LEN] == '/')
-				|| (resource[SANJI_RESOURCE_DEPENDENCY_TOPIC_LEN] == '?'))) {
-		if (code < 0) {
-			procedure = 2;
-		}
-	}
-
-	switch (procedure) {
-	case 1:
+	if (!strcmp(topic, SANJI_CONTROLLER_TOPIC)) {
+		DEBUG_PRINT("[DISPATCH] start routing procedure");
+		routing_procedure(root, id, method, resource, tunnel, sign, code, data);
+	} else if (!strcmp(topic, SANJI_REGISTER_TOPIC)) {
 		DEBUG_PRINT("[DISPATCH] start register procedure");
 		register_procedure(root, id, method, resource, sign, code, data);
-		break;
-	case 2:
-		DEBUG_PRINT("[DISPATCH] start lookup resource dependency procedure");
+	} else if (!strcmp(topic, SANJI_RESOURCE_DEPENDENCY_TOPIC)) {
+		DEBUG_PRINT("[DISPATCH] start lookup dependency procedure");
 		lookup_resource_dependency_procedure(root, id, method, resource, sign, code, data);
-		break;
-	case 0:
-	default:
-		DEBUG_PRINT("[DISPATCH] start routing procedure");
-		routing_procedure(root, id, method, resource, sign, code, data);
-		break;
 	}
 
 	DEBUG_PRINT("[DISPATCH] finish processing context");
@@ -1565,8 +1525,8 @@ void sanji_message_callback(struct mosquitto *mosq, void *obj, const struct mosq
 
 	if (message->payloadlen) {
 		DEBUG_PRINT("========================================================");
-		DEBUG_PRINT("get message len(%d), message(\n%s)", message->payloadlen, (char *)message->payload);
-		sanji_dispatch_context(message->payload, message->payloadlen);
+		DEBUG_PRINT("topic(%s) message(%d):\n%s", message->topic, message->payloadlen, (char *)message->payload);
+		sanji_dispatch_context(message->topic, message->payload, message->payloadlen);
 	}
 }
 
@@ -1621,6 +1581,17 @@ void sanji_connect_callback(struct mosquitto *mosq, void *obj, int result)
 		fprintf(stderr, "ERROR: failed to initialize sanji controller.\n");
 		sanji_run = 0;
 	}
+
+	/* register 'registration' model */
+	if (!component_is_registered(sanji_component, SANJI_REGISTER_NAME)) {
+		component_add_node(sanji_component, SANJI_REGISTER_NAME, "This is registration model.", SANJI_REGISTER_TOPIC, "model", NULL, 0, 10, 0);
+		resource_append_component_by_name(sanji_resource, SANJI_REGISTER_TOPIC, SANJI_REGISTER_NAME);
+	}
+	/* register 'dependency' model */
+	if (!component_is_registered(sanji_component, SANJI_DEPENDENCY_NAME)) {
+		component_add_node(sanji_component, SANJI_DEPENDENCY_NAME, "This is dependency model.", SANJI_RESOURCE_DEPENDENCY_TOPIC, "model", NULL, 0, 10, 0);
+		resource_append_component_by_name(sanji_resource, SANJI_RESOURCE_DEPENDENCY_TOPIC, SANJI_DEPENDENCY_NAME);
+	}
 }
 
 void sanji_log_callback(struct mosquitto *mosq, void *obj, int level, const char *str)
@@ -1667,15 +1638,14 @@ int main(int argc, char *argv[])
 	ud->topics[ud->topic_count-1] = sanji_controller_topic;
 	ud->topic_count++;
 	ud->topics = realloc(ud->topics, ud->topic_count * sizeof(char *));
-	ud->topics[ud->topic_count-1] = sanji_controller_all_topic;
-	ud->topic_count++;
-	ud->topics = realloc(ud->topics, ud->topic_count * sizeof(char *));
 	ud->topics[ud->topic_count-1] = sanji_register_topic;
 	ud->topic_count++;
 	ud->topics = realloc(ud->topics, ud->topic_count * sizeof(char *));
-	ud->topics[ud->topic_count-1] = sanji_register_all_topic;
+	ud->topics[ud->topic_count-1] = sanji_dependency_topic;
 	/* allocate topic mid */
 	ud->topic_mids = (int *)malloc(ud->topic_count * sizeof(int));
+	/* set qos of subscribe */
+	ud->topic_qos = 2;
 	/* set qos of publish */
 	ud->qos_sent = 1;
 

@@ -92,9 +92,9 @@ int main()
 	session = session_init();
 
 	/* add node */
-	session_add_node(session, 1, -1, "r_aaa", NULL, 0, NULL, NULL, 0, NULL, 0);
-	session_add_node(session, 2, 0, "r_bbb", NULL, 0, result_chain2, NULL, 0, NULL, 0);
-	session_add_node(session, 3, 1, "r_ccc", dependency_chain, dependency_chain_count, result_chain3, model_chain, model_chain_count, view_chain, view_chain_count);
+	session_add_node(session, 1, -1, "r_aaa", "t_aaa", NULL, 0, NULL, NULL, 0, NULL, 0);
+	session_add_node(session, 2, 0, "r_bbb", "t_bbb", NULL, 0, result_chain2, NULL, 0, NULL, 0);
+	session_add_node(session, 3, 1, "r_ccc", "t_ccc", dependency_chain, dependency_chain_count, result_chain3, model_chain, model_chain_count, view_chain, view_chain_count);
 
 	/* display, delete, add node */
 	DEBUG_PRINT();
@@ -120,7 +120,7 @@ int main()
 	DEBUG_PRINT();
 	session_display(session);
 
-	session_add_node(session, 4, 2, "r_ddd", NULL, 0, NULL, NULL, 0, NULL, 0);
+	session_add_node(session, 4, 2, "r_ddd", "t_ddd", NULL, 0, NULL, NULL, 0, NULL, 0);
 	DEBUG_PRINT();
 	session_display(session);
 

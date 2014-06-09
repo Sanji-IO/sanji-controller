@@ -1,0 +1,16 @@
+{
+	"id" : 1,
+	"method" : "pOsT",
+	"resource" : "/controller/registration",
+	"tunnel" : "1",
+	"data" : {
+		"name": "eth1-w1",
+		"description": "eth1_desc-w1",
+		"tunnel": "eth1_tun-w1",
+		"role": "model",
+		"ttl": 5,
+		"resources": [
+			"/network/ethernet/eth1/#"
+			]
+	}
+}

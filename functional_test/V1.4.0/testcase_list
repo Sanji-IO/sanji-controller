@@ -1,0 +1,31 @@
+#!/bin/sh
+
+#############################################
+# Case 1xx: Controller Basic Test
+# Case 2xx: Routing Test
+# Case 3xx: Routing Dependency Test
+# Case 4xx: Time-To-Live Test
+# Case 5xx: Register Model Test
+# Case 6xx: Resource Dependency Model Test
+#############################################
+
+
+# 101: Controller should lock related resource/model for wirte-like request
+
+# 201: routing read-like request
+# 202: topic matching for long topics
+# 203: topic matching with no resource found
+# 204: found resource but only subscribed by 'view'
+# 205: controller should support routing query string '?'
+# 206: controller should support subscribed wildcard resource for '#'
+# 207: controller should support ephemeral request
+
+# 301: routing write-like request with dependency
+# 302: routing write-like request with dependency, but some model fail
+
+# 401: basic TTL function
+
+# 501: 'method' should be case-insensitive
+# 502: 'data' should have fool prevent for incomplete entry
+# 503: CRUD operations
+# 504: model should be able to listem multi-resources
