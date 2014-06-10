@@ -1,0 +1,8 @@
+{
+	"id" : 601,
+	"method" : "PUT",
+	"resource" : "/controller/resource/dependency?resource=/network/ethernet/eth1",
+	"tunnel" : "601",
+	"data" : {
+	}
+}

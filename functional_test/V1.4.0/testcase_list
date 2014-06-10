@@ -29,3 +29,6 @@
 # 502: 'data' should have fool prevent for incomplete entry
 # 503: CRUD operations
 # 504: model should be able to listem multi-resources
+
+# 601: test basic CRUD method. Resource dependecy resource only support 'read' method.
+# 602: test more complicated dependency situation

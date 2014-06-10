@@ -298,6 +298,36 @@ int sanji_error_response(
 	return 0;
 }
 
+struct resource *sanji_match_resource(char *topic)
+{
+	struct resource *resource = NULL;
+	char _resource[RESOURCE_NAME_LEN];
+	char *p = NULL;
+
+	/*
+	 * Match rules:
+	 *   1. truncate '?'
+	 *   2. match the longest resource to topic.
+	 */
+	memset(_resource, '\0', RESOURCE_NAME_LEN);
+	strncpy(_resource, topic, RESOURCE_NAME_LEN);
+	/* truncate '?' */
+	p = strrchr(_resource, '?');
+	if (p) *p = '\0';
+	resource = resource_lookup_node_by_name(sanji_resource, _resource);
+	while (!resource) {
+		/* truncate the last fragment */
+		p = strrchr(_resource, '/');
+		if (p) {
+			*p = '\0';
+			resource = resource_lookup_node_by_name(sanji_resource, _resource);
+		} else {
+			break;
+		}
+	}
+
+	return resource;
+}
 
 /*
  * SANJI REGISTER PROCEDURE
@@ -735,7 +765,7 @@ int register_procedure(
 	case RESOURCE_METHOD_READ:
 		DEBUG_PRINT("[REGISTER] read method");
 
-		/* TODO */
+		/* TODO: support read method */
 
 		/* read registeration */
 		DEBUG_PRINT("read method is not implemented.");
@@ -779,6 +809,257 @@ int register_procedure(
 /*
  * SANJI LOOKUP RESOURCE DEPENDENCY PROCEDURE
  */
+int dependency_error_response(
+		unsigned int id,
+		int method,
+		char *topic,
+		int status_code,
+		char *message,
+		char *log)
+{
+	sanji_error_response(sanji_controller_topic, id, method, topic, SANJI_CONTROLLER_NAME, status_code, message, log);
+
+	return 0;
+}
+
+int dependency_response(
+		unsigned int id,
+		int method,
+		char *topic,
+		int status_code,
+		char *resources,
+		unsigned int resources_count)
+{
+	/* reponse context */
+	json_t *response_root = NULL;
+	json_t *response_sign = NULL;
+	json_t *data = NULL;
+	json_t *_resources = NULL;
+	char *_method = NULL;
+	char *context = NULL;
+	int i;
+
+	/* create json reponse context */
+	response_root = json_object();
+	if (!response_root) {
+		DEBUG_PRINT("ERROR: out of memory");
+		return 1;
+	}
+
+	/* add 'id' and 'code' */
+	json_object_set_new(response_root, "id", json_integer(id));
+	json_object_set_new(response_root, "code", json_integer(status_code));
+
+	/* add 'method', 'resource' */
+	_method = resource_reverse_method(method);
+	if (_method) {
+		json_object_set_new(response_root, "method", json_string(_method));
+		free(_method);
+	}
+	if (topic) {
+		json_object_set_new(response_root, "resource", json_string(topic));
+	}
+
+	/* add 'sign' */
+	response_sign = json_array();
+	json_array_append_new(response_sign, json_string(SANJI_CONTROLLER_NAME));
+	json_object_set_new(response_root, "sign", response_sign);
+
+	/* create 'data' */
+	data = json_object();
+	if (!data) {
+		DEBUG_PRINT("ERROR: out of memory");
+		json_decref(response_root);
+		return 1;
+	}
+
+	/* add 'resources' */
+	_resources = json_array();
+	if (!_resources) {
+		DEBUG_PRINT("ERROR: out of memory");
+		json_decref(response_root);
+		json_decref(data);
+		return 1;
+	}
+	for (i = 0; i < resources_count; i++) {
+		json_array_append_new(_resources, json_string(&resources[i * RESOURCE_NAME_LEN]));
+	}
+	json_object_set_new(data, "resources", _resources);
+	json_object_set_new(response_root, "data", data);
+
+	/* dump to string */
+	context = json_dumps(response_root, JSON_INDENT(4));
+	if (!context) {
+		DEBUG_PRINT("ERROR: out of memory");
+		json_decref(response_root);
+		return 1;
+	}
+	json_decref(response_root);
+
+	/* publish response */
+	_sanji_response(sanji_controller_topic, context);
+
+	free(context);
+
+	return 0;
+}
+
+int dependency_read(char *resource, char **resources, unsigned int *resources_count, char *message, char *log)
+{
+	/* resource */
+	struct resource *_resource = NULL;
+	char *_resources = NULL;
+	unsigned int last_resources_count = 0;
+	/* component */
+	struct component *component = NULL;
+	char *subscribed_component = NULL;
+	unsigned int subscribed_count = 0;
+	/* hook */
+	char *hook_component = NULL;
+	char *_hook_component = NULL;
+	unsigned int hook_count = 0;
+	unsigned int last_hook_count = 0;
+	/* inspect var */
+	int is_model = 0;
+	int is_duplicate = 0;
+	/* temp var */
+	char *resources_tmp = NULL;
+	char *hook_tmp = NULL;
+	int i, j, k;
+
+	*resources_count = 0;
+	memset(message, '\0', SANJI_MESSAGE_LEN);
+	memset(log, '\0', SANJI_MESSAGE_LEN);
+
+	if (!resource) {
+		strncpy(message, "internal server error", SANJI_MESSAGE_LEN);
+		return SESSION_CODE_INTERNAL_SERVER_ERROR;
+	}
+
+	/* lookup resource */
+	_resource = sanji_match_resource(resource);
+	if (!_resource) {
+		DEBUG_PRINT("ERROR: Resource(%s) had not been registered", resource);
+		strncpy(message, "resource had not been registered", SANJI_MESSAGE_LEN);
+		return SESSION_CODE_NOT_FOUND;
+	}
+
+	/* allocate subscribed component */
+	subscribed_count = resource_get_subscribed_count(_resource);
+	if (subscribed_count) {
+		subscribed_component = (char *)malloc(subscribed_count * COMPONENT_NAME_LEN);
+		if (!subscribed_component) {
+			DEBUG_PRINT("ERROR: out of memory");
+			strncpy(message, "service unavailable", SANJI_MESSAGE_LEN);
+			return SESSION_CODE_SERVICE_UNAVAILABLE;
+		}
+		memset(subscribed_component, '\0', subscribed_count * COMPONENT_NAME_LEN);
+		memcpy(subscribed_component, resource_get_subscribed_component(_resource), subscribed_count * COMPONENT_NAME_LEN);
+	} else {
+		DEBUG_PRINT("Resource not implemented.");
+		strncpy(message, "resource is not implemented", SANJI_MESSAGE_LEN);
+		return SESSION_CODE_NOT_IMPLEMENTED;
+	}
+
+	/*
+	 * Start to find model chain and dependency chain
+	 */
+	do {
+#if (defined DEBUG) || (defined VERBOSE)
+		DEBUG_PRINT("subscribed_count(%d)", subscribed_count);
+		for (i = 0; i < subscribed_count; i++) {
+			DEBUG_PRINT("subscribed_component(%s)", subscribed_component + i * COMPONENT_NAME_LEN);
+		}
+#endif
+		/* reallocate models/views */
+		for (i = 0; i < subscribed_count; i++) {
+			/* for each component */
+			component = component_lookup_node_by_name(sanji_component, subscribed_component + i * COMPONENT_NAME_LEN);
+			if (!component) {
+				DEBUG_PRINT("Component didn't be registered.");
+				continue;
+			}
+
+			/* for each model */
+			is_model = component_node_is_given_role(component, "model");
+			if (is_model) {
+				/* reallocate resources and resources count */
+				last_resources_count = *resources_count;
+				_resources = resource_get_names_by_component(sanji_resource, component->name, resources_count); // MUST FREE return address
+				if (_resources) {
+					/* search current 'resources' for each entry of '_resources' to avoid duplicate entry */
+					for (j = 0; j < *resources_count; j++) {
+						is_duplicate = 0;
+						for (k = 0; k < last_resources_count; k++) {
+							if (!strncmp(_resources + j * RESOURCE_NAME_LEN, *resources + k * RESOURCE_NAME_LEN, RESOURCE_NAME_LEN)) {
+								is_duplicate = 1;
+								break;
+							}
+						}
+						if (!is_duplicate) {
+							last_resources_count++;
+							resources_tmp = (char *)realloc(*resources, last_resources_count * RESOURCE_NAME_LEN);
+							if (!resources_tmp) {
+								DEBUG_PRINT("ERROR: out of memory");
+								strncpy(message, "service unavailable", SANJI_MESSAGE_LEN);
+								if (subscribed_component) free(subscribed_component);
+								if (hook_component) free(hook_component);
+								if (*resources) free(*resources);
+								if (_resources) free(_resources);
+								return SESSION_CODE_SERVICE_UNAVAILABLE;
+							}
+							*resources = resources_tmp;
+							memset(*resources + (last_resources_count - 1) * RESOURCE_NAME_LEN, '\0', RESOURCE_NAME_LEN);
+							memcpy(*resources + (last_resources_count - 1) * RESOURCE_NAME_LEN, _resources + j * RESOURCE_NAME_LEN, RESOURCE_NAME_LEN);
+						}
+					}
+					free(_resources);
+				}
+				*resources_count = last_resources_count;
+
+				/* reallocate hook models and hook count */
+				last_hook_count = hook_count;
+				_hook_component = component_get_names_by_hook(sanji_component, component->name, &hook_count); // MUST FREE return address
+				if (_hook_component) {
+					hook_tmp = (char *)realloc(hook_component, (last_hook_count + hook_count) * COMPONENT_NAME_LEN);
+					if (!hook_tmp) {
+						DEBUG_PRINT("ERROR: out of memory");
+						strncpy(message, "service unavailable", SANJI_MESSAGE_LEN);
+						if (subscribed_component) free(subscribed_component);
+						if (hook_component) free(hook_component);
+						if (*resources) free(*resources);
+						if (_hook_component) free(_hook_component);
+						return SESSION_CODE_SERVICE_UNAVAILABLE;
+					}
+					hook_component = hook_tmp;
+					memset(hook_component + last_hook_count * COMPONENT_NAME_LEN, '\0', hook_count * COMPONENT_NAME_LEN);
+					memcpy(hook_component + last_hook_count * COMPONENT_NAME_LEN, _hook_component, hook_count * COMPONENT_NAME_LEN);
+					free(_hook_component);
+				}
+				hook_count += last_hook_count;
+			}
+		}
+
+		/* clean temp variable */
+		if (subscribed_component) {
+			free(subscribed_component);
+			subscribed_component = NULL;
+		}
+		subscribed_component = hook_component;
+		subscribed_count = hook_count;
+		hook_component = NULL;
+		hook_count = 0;
+
+	} while (subscribed_count);
+
+
+	/* clear */
+	if (subscribed_component) free(subscribed_component);
+	if (hook_component) free(hook_component);
+
+	return SESSION_CODE_OK;
+}
+
 int lookup_resource_dependency_procedure(
 		json_t *root,
 		unsigned int id,
@@ -788,6 +1069,104 @@ int lookup_resource_dependency_procedure(
 		int code,
 		json_t *data)
 {
+	/* request data */
+	char resource[RESOURCE_NAME_LEN];
+	char *resources = NULL;
+	unsigned int resources_count = 0;
+	/* response data */
+	int status_code;
+	char message[SANJI_MESSAGE_LEN];
+	char log[SANJI_MESSAGE_LEN];
+	/* others */
+	int topic_len;
+
+	DEBUG_PRINT("[RESOURCE DEPENDENCY]");
+
+	topic_len = strlen(topic);
+
+	/*
+	 * Validate context content
+	 * 	1. 'resource' is not '/controller/resource/dependency'
+	 */
+	if ((topic_len < SANJI_RESOURCE_DEPENDENCY_TOPIC_LEN)
+			|| (strncmp(topic, SANJI_RESOURCE_DEPENDENCY_TOPIC, SANJI_RESOURCE_DEPENDENCY_TOPIC_LEN))) {
+		DEBUG_PRINT("ERROR: resource didn't match.");
+		dependency_error_response(id, method, topic, SESSION_CODE_BAD_REQUEST, "wrong context", "'resource' didn't match");
+	}
+
+	/* CRUD methods */
+	switch (method) {
+
+	case RESOURCE_METHOD_CREATE:
+		DEBUG_PRINT("[RESOURCE DEPENDENCY] create method");
+
+		DEBUG_PRINT("create method is not implemented.");
+		dependency_error_response(id, method, topic, SESSION_CODE_METHOD_NOT_ALLOWED, "method not allowed", NULL);
+
+		break;
+
+	case RESOURCE_METHOD_READ:
+		DEBUG_PRINT("[RESOURCE DEPENDENCY] read method");
+
+		memset(resource, '\0', RESOURCE_NAME_LEN);
+		if (topic_len == SANJI_RESOURCE_DEPENDENCY_TOPIC_LEN) {
+			/* read capability */
+			DEBUG_PRINT("ERROR: didn't support read capability");
+			dependency_error_response(id, method, topic, SESSION_CODE_METHOD_NOT_ALLOWED, "method not allowed", "not support read capability");
+		}
+
+		/* acquire 'resource' from query string in topic */
+		if (topic[SANJI_RESOURCE_DEPENDENCY_TOPIC_LEN] == '?') {
+			if (!strncmp(topic + SANJI_RESOURCE_DEPENDENCY_TOPIC_LEN, "?resource=", 10)) {
+				strncpy(resource, &topic[SANJI_RESOURCE_DEPENDENCY_TOPIC_LEN + 10], RESOURCE_NAME_LEN);
+				resource[RESOURCE_NAME_LEN - 1] = '\0';
+				DEBUG_PRINT("resource: '%s'", resource);
+			}
+		}
+
+		if (strlen(resource) <= 0) {
+			DEBUG_PRINT("ERROR: cannot get 'resource'");
+			dependency_error_response(id, method, topic, SESSION_CODE_FORBIDDEN, "query forbidden", "only allow with query string '?resource=[identifier]'");
+			return 1;
+		}
+
+		status_code = dependency_read(resource, &resources, &resources_count, message, log); // MUST FREE 'resources'
+
+		if (status_code == SESSION_CODE_OK) {
+			dependency_response(id, method, topic, status_code, resources, resources_count);
+		} else {
+			dependency_error_response(id, method, topic, status_code, message, log);
+		}
+
+		break;
+
+	case RESOURCE_METHOD_UPDATE:
+		DEBUG_PRINT("[RESOURCE DEPENDENCY] update method");
+
+		DEBUG_PRINT("update method is not implemented.");
+		dependency_error_response(id, method, topic, SESSION_CODE_METHOD_NOT_ALLOWED, "method not allowed", NULL);
+
+		break;
+
+	case RESOURCE_METHOD_DELETE:
+		DEBUG_PRINT("[RESOURCE DEPENDENCY] delete method");
+
+		DEBUG_PRINT("delete method is not implemented.");
+		dependency_error_response(id, method, topic, SESSION_CODE_METHOD_NOT_ALLOWED, "method not allowed", NULL);
+
+		break;
+
+	default:
+		DEBUG_PRINT("[RESOURCE DEPENDENCY] unknown method");
+		dependency_error_response(id, method, topic, SESSION_CODE_METHOD_NOT_ALLOWED, "method not allowed", NULL);
+		break;
+	}
+
+	/* clear */
+	if (resources) free(resources);
+
+	DEBUG_PRINT("[RESOURCE DEPENDENCY] finish lookup resource dependency procedure");
+
 	return 0;
 }
 
@@ -890,7 +1269,6 @@ int routing_req(
 	unsigned int resource_list_count = 0;
 	struct resource *resource = NULL;
 	unsigned int resource_count = 0;
-	char _resource[RESOURCE_NAME_LEN];
 	char *subscribed_component = NULL;
 	unsigned int _subscribed_count = 0;
 	unsigned int subscribed_count = 0;
@@ -907,34 +1285,15 @@ int routing_req(
 	int *ttls_tmp = NULL;
 	char *hook_tmp = NULL;
 	char *view_chain_tmp = NULL;
-	char *p = NULL;
 	int i, j, k, index;
 
 	DEBUG_PRINT("[ROUTING] Request procedure");
 
 	/*
-	 * Lookup resource first,
+	 * Match resource first,
 	 * since we have the capability to response after acquiring the resource.
-	 *
-	 * 1. truncate '?'
-	 * 2. match the longest resource to topic.
 	 */
-	memset(_resource, '\0', RESOURCE_NAME_LEN);
-	strncpy(_resource, topic, RESOURCE_NAME_LEN);
-	/* truncate '?' */
-	p = strrchr(_resource, '?');
-	if (p) *p = '\0';
-	resource = resource_lookup_node_by_name(sanji_resource, _resource);
-	while (!resource) {
-		/* truncate the last fragment */
-		p = strrchr(_resource, '/');
-		if (p) {
-			*p = '\0';
-			resource = resource_lookup_node_by_name(sanji_resource, _resource);
-		} else {
-			break;
-		}
-	}
+	resource = sanji_match_resource(topic);
 	if (resource) resource_count++;
 	
 	/* Lookup resource list for wildcard '#' */
@@ -942,8 +1301,8 @@ int routing_req(
 
 	/* combine resource and wildcard resources */
 	if (!resource && !resource_list) {
-		DEBUG_PRINT("Resource not been registered.");
-		routing_error_response_all(tunnel, resource_list, resource_list_count, id, method, topic, SESSION_CODE_INTERNAL_SERVER_ERROR, "internal server error", NULL);
+		DEBUG_PRINT("Resource had not been registered.");
+		routing_error_response_all(tunnel, resource_list, resource_list_count, id, method, topic, SESSION_CODE_NOT_FOUND, NULL, NULL);
 		return 1;
 	}
 
