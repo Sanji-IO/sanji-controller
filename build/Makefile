@@ -1,6 +1,6 @@
 include ./compile.mk
 
-SOURCE_DIR = ..
+SOURCE_DIR = ../src
 CFLAGS = -Wall -I/usr/local/include
 LDFLAGS = -L/usr/local/lib -lmosquitto -ljansson
 

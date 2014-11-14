@@ -24,6 +24,12 @@ CFLAGS += -DWORDS_BIGENDIAN -DUC848X -I/usr/local/arm-linux-4.4.2-v4/xscale-none
 LDFLAGS += -L/usr/local/arm-linux-4.4.2-v4/xscale-none-linux-gnueabi/lib
 endif
 
+ifeq ($(ARCH),xscale-3.8)
+CROSS = arm-none-linux-gnueabi-
+CFLAGS += -I/usr/local/arm-linux-4.7.2-v5/arm-none-linux-gnueabi/include
+LDFLAGS += -L/usr/local/arm-linux-4.7.2-v5/arm-none-linux-gnueabi/lib
+endif
+
 ifeq ($(ARCH),marvell)
 CROSS = arm-mv5sft-linux-gnueabi-
 CFLAGS = -I/usr/local/arm-mv5sft-linux-gnueabi/include
