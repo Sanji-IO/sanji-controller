@@ -1,7 +1,7 @@
 sanji-controller
 ================
 
-![](http://dockeri.co/image/sanji/docker-controller)
+[![](http://dockeri.co/image/sanji/docker-controller)](https://registry.hub.docker.com/u/sanji/docker-controller/)
 
 ```
                        __                __ __           
