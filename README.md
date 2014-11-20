@@ -1,6 +1,8 @@
 sanji-controller
 ================
 
+![](http://dockeri.co/image/sanji/docker-controller)
+
 ```
                        __                __ __           
   _____ ____   ____   / /_ _____ ____   / // /___   _____
