@@ -18,6 +18,10 @@
 #ifndef _LINUX_LIST_H
 #define _LINUX_LIST_H
 
+#ifdef _MSC_VER
+#define inline __inline
+#endif
+
 /**
  * @name from other kernel headers
  */
@@ -35,10 +39,14 @@
  * @param member     the name of the member within the struct.
  *
  */
+#ifdef WIN32
+// M$ is no support typeof.
+#define container_of(ptr, type, member) (ptr)
+#else
 #define container_of(ptr, type, member) ({                      \
         const typeof( ((type *)0)->member ) *__mptr = (ptr);    \
         (type *)( (char *)__mptr - offsetof(type,member) );})
-
+#endif
 
 /*
  * These are non-NULL pointers that will result in page faults
@@ -78,40 +86,40 @@ struct list_head {
  * This is only for internal list manipulation where we know
  * the prev/next entries already!
  */
-static inline void __list_add(struct list_head *new,
+static inline void __list_add(struct list_head *newlist,
 			      struct list_head *prev,
 			      struct list_head *next)
 {
-	next->prev = new;
-	new->next = next;
-	new->prev = prev;
-	prev->next = new;
+	next->prev = newlist;
+	newlist->next = next;
+	newlist->prev = prev;
+	prev->next = newlist;
 }
 
 /**
  * list_add - add a new entry
- * @new: new entry to be added
+ * @newlist: new entry to be added
  * @head: list head to add it after
  *
  * Insert a new entry after the specified head.
  * This is good for implementing stacks.
  */
-static inline void list_add(struct list_head *new, struct list_head *head)
+static inline void list_add(struct list_head *newlist, struct list_head *head)
 {
-	__list_add(new, head, head->next);
+	__list_add(newlist, head, head->next);
 }
 
 /**
  * list_add_tail - add a new entry
- * @new: new entry to be added
+ * @newlist: new entry to be added
  * @head: list head to add it before
  *
  * Insert a new entry before the specified head.
  * This is useful for implementing queues.
  */
-static inline void list_add_tail(struct list_head *new, struct list_head *head)
+static inline void list_add_tail(struct list_head *newlist, struct list_head *head)
 {
-	__list_add(new, head->prev, head);
+	__list_add(newlist, head->prev, head);
 }
 
 
@@ -283,10 +291,18 @@ static inline void list_splice_init(struct list_head *list,
  * @head:	the head for your list.
  * @member:	the name of the list_struct within the struct.
  */
+#ifdef WIN32
+// M$ is no support typeof.
+#define list_for_each_entry(pos, head, member)				\
+	for (pos = list_entry((head)->next, 0, member);	\
+	     &pos->member != (head);					\
+	     pos = list_entry(pos->member.next, 0, member))
+#else
 #define list_for_each_entry(pos, head, member)				\
 	for (pos = list_entry((head)->next, typeof(*pos), member);	\
 	     &pos->member != (head);					\
 	     pos = list_entry(pos->member.next, typeof(*pos), member))
+#endif
 
 /**
  * list_for_each_entry_reverse - iterate backwards over list of given type.

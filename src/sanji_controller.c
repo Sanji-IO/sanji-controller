@@ -13,11 +13,9 @@
 #ifndef WIN32
 #  include <unistd.h>
 #else
-#  define _WIN32_WINNT _WIN32_WINNT_VISTA
 #  include <windows.h>
 #  include <process.h>
-#  include <winsock2.h>
-#  define snprintf sprintf_s
+#  define snprintf _snprintf
 #endif
 
 #include <mosquitto.h>
@@ -49,33 +47,12 @@ struct resource *sanji_resource = NULL;
 struct component *sanji_component = NULL;
 struct session *sanji_session = NULL;
 
-
-/*
- * ##########################
- * MISC FUNCTIONS
- * ##########################
- */
-#ifdef WIN32
-static bool tick64 = false;
-void _windows_time_version_check(void)
-{
-	OSVERSIONINFO vi;
-	tick64 = false;
-
-	memset(&vi, 0, sizeof(OSVERSIONINFO));
-	vi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
-	if (GetVersionEx(&vi)) {
-		if (vi.dwMajorVersion > 5) {
-			tick64 = true;
-		}
-	}
-}
-#endif
-
 char *get_timestamp(int mode)
 {
 	static char timestamp[SANJI_TIMESTAMP_LEN];
+#ifndef WIN32
 	struct timespec tp;
+#endif
 	time_t ltime;
 	struct tm *tm_time;
 
@@ -84,12 +61,7 @@ char *get_timestamp(int mode)
 	switch (mode) {
 	case SANJI_TIMESTAMP_MODE_MONOTONIC:
 #ifdef WIN32
-		_windows_time_version_check();
-		if (tick64) {
-			return GetTickCount64()/1000;
-		} else {
-			return GetTickCount()/1000; // FIXME: need to deal with overflow.
-		}
+		sprintf(timestamp, "%I64u", GetTickCount64()/1000);
 #elif _POSIX_TIMERS>0 && defined(_POSIX_MONOTONIC_CLOCK)
 
 		clock_gettime(CLOCK_MONOTONIC, &tp);
@@ -122,10 +94,7 @@ char *get_timestamp(int mode)
 
 int generate_random(int mode)
 {
-#ifndef WIN32
 	static int num = 0;
-	unsigned int seed;
-	FILE *urandom = NULL;
 
 	switch (mode) {
 	case SANJI_RAND_MODE_SEQ:
@@ -134,14 +103,22 @@ int generate_random(int mode)
 		break;
 	case SANJI_RAND_MODE_RANDOM:
 	default:
+#ifndef WIN32
+		{
+		FILE *urandom = NULL;
+		unsigned int seed;
 		urandom = fopen("/dev/urandom", "r");
 		fread(&seed, sizeof(int), 1, urandom);
 		fclose(urandom);
 		srand(seed);
+		}
+#else
+		srand((unsigned)time(NULL));
+#endif
 		return rand();
 	}
-#else
-#endif
+
+	return 0;
 }
 
 
@@ -416,7 +393,7 @@ int register_create(char *name, char *description, char *role, char *hook, unsig
 {
 	int is_registered = 0;
 	int is_locked = 0;
-	int i;
+	unsigned int i;
 
 	memset(message, '\0', SANJI_MESSAGE_LEN);
 	memset(log, '\0', SANJI_MESSAGE_LEN);
@@ -566,7 +543,7 @@ int register_procedure(
 	char log[SANJI_MESSAGE_LEN];
 	/* others */
 	json_t *tmp = NULL;
-	int i;
+	unsigned int i;
 
 	DEBUG_PRINT("[REGISTER]");
 
@@ -690,7 +667,7 @@ int register_procedure(
 		/* acquire 'ttl' */
 		tmp = json_object_get(data, "ttl");
 		if (tmp && json_is_number(tmp)) {
-			ttl = json_number_value(tmp);
+			ttl = (int) json_number_value(tmp);
 			DEBUG_PRINT("ttl: '%d'", ttl);
 		} else {
 			DEBUG_PRINT("ERROR: wrong sanji packet, no 'ttl'.");
@@ -837,7 +814,7 @@ int dependency_response(
 	json_t *_resources = NULL;
 	char *_method = NULL;
 	char *context = NULL;
-	int i;
+	unsigned int i;
 
 	/* create json reponse context */
 	response_root = json_object();
@@ -925,7 +902,7 @@ int dependency_read(char *resource, char **resources, unsigned int *resources_co
 	/* temp var */
 	char *resources_tmp = NULL;
 	char *hook_tmp = NULL;
-	int i, j, k;
+	unsigned int i, j, k;
 
 	*resources_count = 0;
 	memset(message, '\0', SANJI_MESSAGE_LEN);
@@ -1186,7 +1163,7 @@ int routing_error_response(
 	unsigned int subscribed_count;
 	char *component = NULL;
 	char *tunnel = NULL;
-	int i;
+	unsigned int i;
 
 	if (!resource) return 1;
 
@@ -1220,7 +1197,7 @@ int routing_error_response_all(
 		char *message,
 		char *log)
 {
-	int i;
+	unsigned int i;
 	int ret;
 
 	/* if we get 'tunnel', ONLY response to this 'tunnel' */
@@ -1285,7 +1262,7 @@ int routing_req(
 	int *ttls_tmp = NULL;
 	char *hook_tmp = NULL;
 	char *view_chain_tmp = NULL;
-	int i, j, k, index;
+	unsigned int i, j, k, index;
 
 	DEBUG_PRINT("[ROUTING] Request procedure");
 
@@ -1727,7 +1704,7 @@ int sanji_parse_context(char *context, json_t **root, unsigned int *id, int *met
 	/* get id from json context */
 	tmp = json_object_get(*root, "id");
 	if (tmp && json_is_number(tmp)) {
-		*id = json_number_value(tmp);
+		*id = (int) json_number_value(tmp);
 		DEBUG_PRINT("id: '%u'", *id);
 	}
 
@@ -1769,7 +1746,7 @@ int sanji_parse_context(char *context, json_t **root, unsigned int *id, int *met
 	/* get code from json context */
 	tmp = json_object_get(*root, "code");
 	if (tmp && json_is_number(tmp)) {
-		*code = json_number_value(tmp);
+		*code = (int) json_number_value(tmp);
 		DEBUG_PRINT("code: '%d'", *code);
 	}
 
@@ -2228,7 +2205,11 @@ int main(int argc, char *argv[])
 	if(strlen(ud->client_id) == 0){
 		memset(hostname, '\0', sizeof(hostname));
 		gethostname(hostname, sizeof(hostname));
+#ifdef WIN32
+		snprintf(ud->client_id, sizeof(ud->client_id), "mosqsub/%d-%s", _getpid(), hostname);
+#else
 		snprintf(ud->client_id, sizeof(ud->client_id), "mosqsub/%d-%s", getpid(), hostname);
+#endif
 	}
 	if(strlen(ud->client_id) > MOSQ_MQTT_ID_MAX_LENGTH){
 		/* Enforce maximum client id length of 23 characters */
@@ -2293,7 +2274,11 @@ int main(int argc, char *argv[])
 		if (sanji_run && rc) {
 			fprintf(stderr, "SANJI: reconnect to server\n");
 			mosquitto_reconnect(mosq);
+#ifdef WIN32
+			Sleep(1);
+#else
 			sleep(1);
+#endif
 		}
 	}
 
