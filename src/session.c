@@ -116,7 +116,7 @@ struct session *session_lookup_node_by_id(struct session *head, unsigned int id)
 
 void session_display_dependency_chain(char *dependency_chain, unsigned int dependency_chain_count)
 {
-	int i;
+	unsigned int i;
 
 	if (dependency_chain) {
 		/* display view chain */
@@ -128,7 +128,7 @@ void session_display_dependency_chain(char *dependency_chain, unsigned int depen
 
 void session_display_model_chain(struct model_chain *model_chain, unsigned int model_chain_count)
 {
-	int i, j;
+	unsigned int i, j;
 
 	if (model_chain) {
 		/* display model chain */
@@ -146,7 +146,7 @@ void session_display_model_chain(struct model_chain *model_chain, unsigned int m
 
 void session_display_view_chain(char *view_chain, unsigned int view_chain_count)
 {
-	int i;
+	unsigned int i;
 
 	if (view_chain) {
 		/* display view chain */
@@ -213,7 +213,7 @@ void session_free(struct session *head)
 
 void session_free_model_chain(struct model_chain *model_chain, unsigned int model_chain_count)
 {
-	int i;
+	unsigned int i;
 
 	if (model_chain) {
 		for (i = 0; i < model_chain_count; i++) {
@@ -295,7 +295,7 @@ int session_node_unlock_by_step(struct session *node, struct resource *resource_
 	struct model_chain *model_chain = NULL;
 	char *model = NULL;
 	int ret;
-	int i, j;
+	unsigned int i, j;
 
 	if (!node || !resource_list || !component_list || step < 0) {
 		fprintf(stderr, "Error: session node is empty.\n");
@@ -336,7 +336,7 @@ int session_node_lock_by_step(struct session *node, struct resource *resource_li
 	struct model_chain *model_chain = NULL;
 	char *model = NULL;
 	int ret;
-	int i, j;
+	unsigned int i, j;
 
 	if (!node || !resource_list || !component_list || step < 0) {
 		fprintf(stderr, "Error: session node is empty.\n");
@@ -416,7 +416,7 @@ int session_step_stop(
 	char *packet_context = NULL;
 	int packet_context_len;
 	char *_method = NULL;
-	int i;
+	unsigned int i;
 
 	/* dump packet context from json object 'root' and node->result_chain */
 	if (node->curr_step > node->model_chain_count) {
@@ -541,7 +541,7 @@ int session_step(
 	json_t *result_data = NULL;
 	char *packet_context = NULL;
 	int packet_context_len;
-	int i;
+	unsigned int i;
 
 	if (!node || !resource_list || !component_list || !mosq || !obj || !root) return -1;
 
@@ -627,8 +627,8 @@ void session_decref_ttl(struct session *session_list, struct resource *resource_
 	struct session *curr = NULL;
 	struct model_chain *model_chain = NULL;
 	struct session **flush_list = NULL;
-	int flush_count = 0;
-	int i;
+	unsigned int flush_count = 0;
+	unsigned int i;
 
 	if (!session_list) return;
 

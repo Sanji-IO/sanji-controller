@@ -58,7 +58,7 @@ int resource_add_node(struct resource *head, char *name, char *subscribed_compon
 void resource_display(struct resource *head)
 {
 	struct resource *curr = NULL;
-	int i = 1, j;
+	unsigned int i = 1, j;
 
 	if (head) {
 		list_for_each_entry(curr, &head->list, list) {
@@ -264,7 +264,7 @@ int resource_is_any_locked_by_component(struct resource *head, char *subscribed_
 	struct resource *curr = NULL;
 	int is_locked = 0;
 	int is_finded = 0;
-	int i;
+	unsigned int i;
 
 	list_for_each_entry(curr, &head->list, list) {
 		/* clear varirable */
@@ -341,7 +341,7 @@ int resource_remove_component_by_name(struct resource *head, char *name, char *s
 	int is_finded = 0;
 	int component_index = -1;
 	char *tmp = NULL;
-	int i;
+	unsigned int i;
 
 	if (!head || !name || !subscribed_component) {
 		fprintf(stderr, "Error: remove subscribed component failed\n");
@@ -424,10 +424,10 @@ int resource_remove_all_component_by_name(struct resource *head, char *subscribe
 {
 	struct resource *curr = NULL;
 	struct resource **remove_resource = NULL;
-	int remove_count = 0;
+	unsigned int remove_count = 0;
 	int *remove_component_index = NULL;
 	char *tmp = NULL;
-	int i;
+	unsigned int i;
 
 	if (!head || !subscribed_component) {
 		fprintf(stderr, "Error: remove subscribed component failed\n");
@@ -634,7 +634,7 @@ char *resource_get_names_by_component(struct resource *head, char *component, un
 	struct resource *curr = NULL;
 	char *names = NULL;
 	char *names_tmp = NULL;
-	int i;
+	unsigned int i;
 
 	*names_count = 0;
 
