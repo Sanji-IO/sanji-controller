@@ -5,6 +5,10 @@ int main()
 	struct component *component = NULL;
 	struct component *node = NULL;
 	int i;
+    int ret;
+    char hook[4][COMPONENT_NAME_LEN];
+   	char *names = NULL;
+	unsigned int names_count;
 
 	/* init */
 	component = component_init();
@@ -34,7 +38,6 @@ int main()
 	component_display(component);
 
 	/* add node for hook */
-	char hook[4][COMPONENT_NAME_LEN];
 	memset(hook, '\0',  sizeof(hook));
 	strcpy(&hook[0][0], "h_eee_1");
 	strcpy(&hook[1][0], "h_eee_2");
@@ -83,7 +86,6 @@ int main()
 	if (node) DEBUG_PRINT("find node id(%s)", node->name);
 
 	/* lock by name */
-	int ret;
 	ret = component_lock_by_name(component, "n_aaa");
 	DEBUG_PRINT("lock by name return code(%d)", ret);
 	ret = component_lock_by_name(component, "n_bbb");
@@ -150,9 +152,7 @@ int main()
 	component_add_node(component, "n_ccc", NULL, "t_ccc", "r_ccc", "n_aaa", 1, 333, 0);
 	component_display(component);
 
-	char *names = NULL;
-	unsigned int names_count;
-	names = component_get_names_by_hook(component, "n_aaa", &names_count);
+    names = component_get_names_by_hook(component, "n_aaa", &names_count);
 	if (names_count > 0) {
 		for (i = 0; i < names_count; i++) DEBUG_PRINT("get names(%s) by hook(%s)", names + i * COMPONENT_NAME_LEN, "n_aaa");
 		free(names);
