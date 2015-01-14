@@ -11,3 +11,9 @@ sanji-controller
 \___/ \____//_/ /_/ \__//_/    \____//_//_/ \___//_/     
                                                          
 ```
+
+Build
+-----
+Build images for armhf arch:
+
+    $ ./build.sh armhf
