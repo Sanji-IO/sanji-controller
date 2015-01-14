@@ -2,7 +2,7 @@ FROM debian:stable
 
 MAINTAINER Zack YL Shih <zackyl.shih@moxa.com>
 
-RUN apt-get update && apt-get upgrade -y && apt-get install -y wget
+RUN apt-get update && apt-get install -y wget
 
 RUN wget -O - http://repo.mosquitto.org/debian/mosquitto-repo.gpg.key | \
     apt-key add - &&\
@@ -10,7 +10,6 @@ RUN wget -O - http://repo.mosquitto.org/debian/mosquitto-repo.gpg.key | \
     http://repo.mosquitto.org/debian/mosquitto-repo.list
 
 RUN apt-get update && \
-    apt-get upgrade -y && \
     apt-get install -y build-essential libjansson-dev libmosquitto-dev && \
     rm -rf /var/lib/apt/lists/*
 
