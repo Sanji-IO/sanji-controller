@@ -123,13 +123,13 @@ char *get_timestamp(int mode)
 int generate_random(int mode)
 {
 #ifndef WIN32
-	static int num = 0;
+	static unsigned int num = 0;
 	unsigned int seed;
 	FILE *urandom = NULL;
 
 	switch (mode) {
 	case SANJI_RAND_MODE_SEQ:
-		if (++num == SESSION_MAX_ID) num = 0;
+		if (num++ == SESSION_MAX_ID) num = 0;
 		return num;
 		break;
 	case SANJI_RAND_MODE_RANDOM:
