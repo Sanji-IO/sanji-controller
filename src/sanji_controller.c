@@ -1980,6 +1980,7 @@ int main(int argc, char *argv[])
 	int will_qos = 0;
 	bool will_retain = false;
 	/* temp variable */
+	int retry = SANJI_RETRY_TIMES;
 	int i;
 	int rc;
 
@@ -2265,13 +2266,21 @@ int main(int argc, char *argv[])
 	mosquitto_subscribe_callback_set(mosq, sanji_subscribe_callback);
 
 	/* connect mosquitto */
-	rc = mosquitto_connect(mosq, host, port, keepalive);
-	if (rc) {
-		if (rc == MOSQ_ERR_ERRNO) {
-			fprintf(stderr, "ERROR: %s\n", strerror(errno));
+	while (retry > 0) {
+		rc = mosquitto_connect(mosq, host, port, keepalive);
+		if (rc) {
+			if (rc == MOSQ_ERR_ERRNO) {
+				fprintf(stderr, "ERROR: %s\n", strerror(errno));
+			} else {
+				fprintf(stderr, "ERROR: Unable to connect (%d: %s).\n", rc, mosquitto_strerror(rc));
+			}
+			retry--;
+			sleep(1);
 		} else {
-			fprintf(stderr, "ERROR: Unable to connect (%d: %s).\n", rc, mosquitto_strerror(rc));
+			break;
 		}
+	}
+	if (rc) {
 		mosquitto_destroy(mosq);
 		mosquitto_lib_cleanup();
 		sanji_userdata_free(ud);

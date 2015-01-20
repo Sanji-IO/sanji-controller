@@ -43,6 +43,7 @@ extern "C" {
 #define SANJI_DEFAULT_IP "127.0.0.1"
 #define SANJI_DEFAULT_KEEPALIVE 600
 #define SANJI_MAX_CONTEXT_LEN (1024 * 1024)
+#define SANJI_RETRY_TIMES 10
 
 
 /*
