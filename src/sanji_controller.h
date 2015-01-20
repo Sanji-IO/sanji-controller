@@ -10,15 +10,11 @@ extern "C" {
  * DEFINE MACRO
  * ##########################
  */
-#define SANJI_VERSION "1.5.0"
+#define SANJI_VERSION "1.6.0"
 #define SANJI_HOSTNAME_BUFSIZE 256
 #define SANJI_IP_LEN 16
 #define SANJI_ID_LEN (MOSQ_MQTT_ID_MAX_LENGTH + 32)
 #define SANJI_MESSAGE_LEN 256
-
-/* mode of random number generator */
-#define SANJI_RAND_MODE_SEQ 0
-#define SANJI_RAND_MODE_RANDOM 1
 
 /* controller topics */
 #define SANJI_CONTROLLER_NAME "controller"

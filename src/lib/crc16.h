@@ -1,7 +1,7 @@
 /**
  * @file crc16.h
- * @brief Declaration of file lock utility
- * @date 2012-10-05
+ * @brief Declaration of CRC16-CCITT
+ * @date 2014-08-28
  * @version 1.0.0
  */
 

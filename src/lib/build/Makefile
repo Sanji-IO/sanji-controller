@@ -15,7 +15,8 @@ SRCS = \
        lock.c \
 	   pid.c \
        text_util.c \
-	   strext.c
+	   strext.c \
+	   random_util.c
 
 OBJS = $(SRCS:.c=.o)
 

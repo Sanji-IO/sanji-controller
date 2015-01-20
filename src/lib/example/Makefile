@@ -15,7 +15,8 @@ SRCS = \
 	lock_example.c \
 	pid_example.c \
 	text_util_example.c \
-	strext_example.c
+	strext_example.c \
+	random_util_example.c
 
 OBJS = $(SRCS:.c=.o)
 PROGS = $(SRCS:.c=)

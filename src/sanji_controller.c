@@ -32,6 +32,7 @@
 #include "lock.h"
 #include "pid.h"
 #include "time_util.h"
+#include "random_util.h"
 
 
 /*
@@ -52,36 +53,6 @@ static int sanji_run = 1;
 struct resource *sanji_resource = NULL;
 struct component *sanji_component = NULL;
 struct session *sanji_session = NULL;
-
-
-/*
- * ##########################
- * MISC FUNCTIONS
- * ##########################
- */
-int generate_random(int mode)
-{
-#ifndef WIN32
-	static unsigned int num = 0;
-	unsigned int seed;
-	FILE *urandom = NULL;
-
-	switch (mode) {
-	case SANJI_RAND_MODE_SEQ:
-		if (num++ == SESSION_MAX_ID) num = 0;
-		return num;
-		break;
-	case SANJI_RAND_MODE_RANDOM:
-	default:
-		urandom = fopen("/dev/urandom", "r");
-		fread(&seed, sizeof(int), 1, urandom);
-		fclose(urandom);
-		srand(seed);
-		return rand();
-	}
-#else
-#endif
-}
 
 
 /*
@@ -390,7 +361,7 @@ int register_create(char *name, char *description, char *role, char *hook, unsig
 	/* create a unique random tunnel */
 	do {
 		memset(tunnel, '\0', COMPONENT_TUNNEL_LEN);
-		sprintf(tunnel, "%u", generate_random(SANJI_RAND_MODE_RANDOM));
+		sprintf(tunnel, "%d", generate_random(RAND_MODE_RANDOM));
 	} while (!component_is_unique_tunnel(sanji_component, tunnel));
 
 	if (component_add_node(sanji_component, name, description, tunnel, role, hook, hook_count, ttl, 0)) {
