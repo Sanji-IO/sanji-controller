@@ -65,7 +65,7 @@ int component_add_node(struct component *head, char *name, char *description, ch
 void component_display(struct component *head)
 {
 	struct component *curr = NULL;
-	int i = 1, j;
+	unsigned int i = 1, j;
 
 	if (head) {
 		list_for_each_entry(curr, &head->list, list) {
@@ -217,7 +217,7 @@ int component_append_hook_by_name(struct component *head, char *name, char *hook
 				 * Note, be careful to use realloc().
 				 */
 				curr->hook_count++;
-				tmp = realloc(curr->hook, curr->hook_count * COMPONENT_NAME_LEN);
+				tmp = (char*) realloc(curr->hook, curr->hook_count * COMPONENT_NAME_LEN);
 				if (!tmp) {
 					fprintf(stderr, "Error: append node failed, out of memory.\n");
 					return SANJI_DATA_ERROR;
@@ -244,7 +244,7 @@ int component_remove_hook_by_name(struct component *head, char *name, char *hook
 	int is_finded = 0;
 	int hook_index = -1;
 	char *tmp = NULL;
-	int i;
+	unsigned int i;
 
 	if (!head || !name || !hook) {
 		fprintf(stderr, "Error: remove hook failed\n");
@@ -258,7 +258,7 @@ int component_remove_hook_by_name(struct component *head, char *name, char *hook
 	} else if (!is_registered) {
 		return SANJI_SUCCESS;;
 	}
-	
+
 	list_for_each_entry(curr, &head->list, list) {
 		if (!strcmp(curr->name, name)) {
 			if (!curr->lock) {
@@ -349,7 +349,7 @@ char *component_get_names_by_hook(struct component *head, char *hook, unsigned i
 	struct component *curr = NULL;
 	char *names = NULL;
 	char *names_tmp = NULL;
-	int i;
+	unsigned int i;
 
 	*names_count = 0;
 
