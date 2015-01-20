@@ -1,0 +1,12 @@
+{
+	"id" : 2,
+	"method" : "GET",
+	"resource" : "/network/ethernet/1",
+	"sign" : ["ethernet"],
+	"code" : 200,
+	"data" : {
+		"id" : 1,
+		"name" : "eth0",
+		"server ip" : "0.0.0.0"
+	}
+}

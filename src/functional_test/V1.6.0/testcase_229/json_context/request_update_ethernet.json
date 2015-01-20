@@ -1,0 +1,10 @@
+{
+	"id" : 11,
+	"method" : "PUT",
+	"resource" : "/network/ethernet/1",
+	"data" : {
+		"id" : 1,
+		"name" : "eth0",
+		"ethernet ip" : "0.0.0.0"
+	}
+}

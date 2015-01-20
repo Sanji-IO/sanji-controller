@@ -1,5 +1,0 @@
-{
-	"id" : 4,
-	"method" : "GET",
-	"resource" : "/network/ethernet/eth1/[x]/[x]"
-}

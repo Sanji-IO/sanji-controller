@@ -1,8 +1,0 @@
-{
-	"id" : 604,
-	"method" : "delete",
-	"resource" : "/controller/resource/dependency/[id]",
-	"tunnel" : "604",
-	"data" : {
-	}
-}

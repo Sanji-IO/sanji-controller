@@ -1,0 +1,8 @@
+{
+	"id" : 15,
+	"method" : "PUT",
+	"resource" : "/network/iptable/1",
+	"data" : {
+		"id" : 1
+	}
+}

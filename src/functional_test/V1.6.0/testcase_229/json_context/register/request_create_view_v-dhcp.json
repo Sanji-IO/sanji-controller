@@ -1,0 +1,16 @@
+{
+	"id" : 11,
+	"method" : "POST",
+	"resource" : "/controller/registration",
+	"tunnel" : "11",
+	"data" : {
+		"name": "v-dhcp",
+		"description": "v-dhcp_desc",
+		"role": "view",
+		"ttl": 3,
+		"resources": [
+			"/network/dhcp",
+			"/network/dhcp/+"
+			]
+	}
+}

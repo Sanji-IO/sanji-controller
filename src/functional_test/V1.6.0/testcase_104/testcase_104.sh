@@ -4,7 +4,7 @@ source ../testcase_config
 
 ###################################################
 # Test Items:
-#	1.	Lock mechanism (hook)
+#	1.	Lock mechanism (hooked situation)
 ###################################################
 
 # register

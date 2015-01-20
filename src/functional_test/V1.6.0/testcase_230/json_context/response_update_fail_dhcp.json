@@ -1,0 +1,11 @@
+{
+	"id" : 13,
+	"method" : "PUT",
+	"resource" : "/network/dhcp/1",
+	"sign" : ["dhcp"],
+	"code" : 400,
+	"data" : {
+		"message": "update dhcp failed",
+		"log" : "can not find dhcp"
+	}
+}

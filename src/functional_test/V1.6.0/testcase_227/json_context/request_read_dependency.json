@@ -1,6 +1,0 @@
-{
-	"id" : 600,
-	"method" : "GET",
-	"resource" : "/controller/resource/dependency?resource=/network/ethernet/eth1",
-	"tunnel" : "600"
-}

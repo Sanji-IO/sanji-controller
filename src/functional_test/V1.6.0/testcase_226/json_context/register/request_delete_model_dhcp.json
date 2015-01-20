@@ -1,5 +1,0 @@
-{
-	"id" : 3,
-	"method" : "DELETE",
-	"resource" : "/controller/registration/dhcp"
-}

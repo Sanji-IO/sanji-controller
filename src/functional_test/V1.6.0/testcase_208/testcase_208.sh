@@ -5,8 +5,7 @@ source ../testcase_config
 ###################################################
 # Test Items:
 #	1. routing read-like request (model listen multi-resources)
-#		- The latest response will rewrite the header.
-#		- The newest data will not be rewrited by later response.
+#		- The latest response will rewrite the header and data.
 ###################################################
 
 # register

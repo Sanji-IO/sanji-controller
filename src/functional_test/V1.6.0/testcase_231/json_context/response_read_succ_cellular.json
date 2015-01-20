@@ -1,0 +1,12 @@
+{
+	"id" : 2,
+	"method" : "GET",
+	"resource" : "/network/cellular/1",
+	"sign" : ["cellular"],
+	"code" : 200,
+	"data" : {
+		"id" : 1,
+		"name" : "ppp0",
+		"cellular ip" : "0.0.0.0"
+	}
+}

@@ -2,7 +2,7 @@
 	"id" : 1,
 	"method" : "GET",
 	"resource" : "/network/ethernet/1",
-	"sign" : ["ethernet"],
+	"sign" : ["route"],
 	"code" : 400,
 	"data" : {
 		"message": "get route configuration failed.",

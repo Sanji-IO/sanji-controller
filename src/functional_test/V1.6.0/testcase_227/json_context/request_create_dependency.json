@@ -1,8 +1,0 @@
-{
-	"id" : 603,
-	"method" : "POST",
-	"resource" : "/controller/resource/dependency/[id]",
-	"tunnel" : "603",
-	"data" : {
-	}
-}

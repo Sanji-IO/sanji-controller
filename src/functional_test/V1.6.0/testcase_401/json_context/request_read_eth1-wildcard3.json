@@ -1,5 +1,0 @@
-{
-	"id" : 113,
-	"method" : "GET",
-	"resource" : "/network/ethernet/eth1/[x]/[x]?collection=truc"
-}

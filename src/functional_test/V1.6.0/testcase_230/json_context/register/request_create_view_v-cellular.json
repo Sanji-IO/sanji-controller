@@ -1,0 +1,16 @@
+{
+	"id" : 8,
+	"method" : "POST",
+	"resource" : "/controller/registration",
+	"tunnel" : "8",
+	"data" : {
+		"name": "v-cellular",
+		"description": "v-cellular_desc",
+		"role": "view",
+		"ttl": 3,
+		"resources": [
+			"/network/cellular",
+			"/network/cellular/+"
+			]
+	}
+}
