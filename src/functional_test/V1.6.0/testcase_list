@@ -29,6 +29,7 @@
 # 209: routing read-like request (model listen overlap multi-resources)
 # 210: routing read-like request (hooked situation)
 
+# 225: routing wirte-like request (model listen interacted resources)
 # 226: routing wirte-like request (model listen multi-resources)
 # 227: routing write-like request (fail on wait)
 # 228: routing write-like request (fail for TTL on wait)
