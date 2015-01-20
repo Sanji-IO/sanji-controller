@@ -1,0 +1,16 @@
+{
+	"id" : 5,
+	"method" : "POST",
+	"resource" : "/controller/registration",
+	"tunnel" : "5",
+	"data" : {
+		"name": "v-route",
+		"description": "v-cellular_desc",
+		"role": "view",
+		"ttl": 3,
+		"resources": [
+			"/network/cellular",
+			"/network/cellular/+"
+			]
+	}
+}

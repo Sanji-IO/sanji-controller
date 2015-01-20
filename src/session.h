@@ -1,5 +1,5 @@
-#ifndef _SANJI_SESSION_H_
-#define _SANJI_SESSION_H_
+#ifndef _SANJI_SESSION_H
+#define _SANJI_SESSION_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -29,7 +29,7 @@ extern "C" {
 #define SESSION_CODE_NOT_IMPLEMENTED		HTTP_NOT_IMPLEMENTED
 #define SESSION_CODE_SERVICE_UNAVAILABLE	HTTP_SERVICE_UNAVAILABLE
 
-#define SESSION_MAX_ID 4294967295
+#define SESSION_MAX_ID RAND_MAX
 #define SESSION_MIN_ID 1
 
 struct model_chain {
@@ -94,4 +94,4 @@ void session_decref_ttl(struct session *, struct resource *, struct component *,
 }
 #endif
 
-#endif /* _SANJI_SESSION_H_ */
+#endif /* _SANJI_SESSION_H */

@@ -1,0 +1,10 @@
+{
+	"id" : 4,
+	"method" : "GET",
+	"resource" : "/network/route/1",
+	"sign" : ["route"],
+	"code" : 200,
+	"data" : {
+		"gateway" : "0.0.0.0"
+	}
+}

@@ -1,5 +1,5 @@
-#ifndef _SANJI_RESOURCE_H_
-#define _SANJI_RESOURCE_H_
+#ifndef _SANJI_RESOURCE_H
+#define _SANJI_RESOURCE_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -78,4 +78,4 @@ void resource_free(struct resource *);
 }
 #endif
 
-#endif /* _SANJI_RESOURCE_H_ */
+#endif /* _SANJI_RESOURCE_H */

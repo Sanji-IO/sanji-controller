@@ -1,0 +1,19 @@
+{
+	"id" : 6,
+	"method" : "POST",
+	"resource" : "/controller/registration",
+	"tunnel" : "6",
+	"data" : {
+		"name": "iptable",
+		"description": "iptable_desc",
+		"role": "model",
+		"ttl": 5,
+		"hook": [
+			"route"
+			],
+		"resources": [
+			"/network/iptable",
+			"/network/iptable/+"
+			]
+	}
+}

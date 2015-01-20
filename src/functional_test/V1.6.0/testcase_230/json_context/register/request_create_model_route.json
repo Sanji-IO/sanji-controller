@@ -1,0 +1,21 @@
+{
+	"id" : 4,
+	"method" : "POST",
+	"resource" : "/controller/registration",
+	"tunnel" : "4",
+	"data" : {
+		"name": "route",
+		"description": "route_desc",
+		"role": "model",
+		"ttl": 3,
+		"hook": [
+			"ethernet",
+			"cellular",
+			"wifi"
+			],
+		"resources": [
+			"/network/route",
+			"/network/route/+"
+			]
+	}
+}

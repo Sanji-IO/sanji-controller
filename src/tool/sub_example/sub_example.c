@@ -205,6 +205,7 @@ int main(int argc, char *argv[])
 	memset(ud, 0, sizeof(struct mqtt_userdata));
 	memset(id, '\0', sizeof(id));
 	memset(id_prefix, '\0', sizeof(id_prefix));
+	ud->topic_qos = 2;
 
 	/* get option */
 	for(i=1; i<argc; i++){

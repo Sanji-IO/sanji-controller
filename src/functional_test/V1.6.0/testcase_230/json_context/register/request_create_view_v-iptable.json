@@ -1,0 +1,16 @@
+{
+	"id" : 12,
+	"method" : "POST",
+	"resource" : "/controller/registration",
+	"tunnel" : "12",
+	"data" : {
+		"name": "v-iptable",
+		"description": "v-iptable_desc",
+		"role": "view",
+		"ttl": 3,
+		"resources": [
+			"/network/iptable",
+			"/network/iptable/+"
+			]
+	}
+}

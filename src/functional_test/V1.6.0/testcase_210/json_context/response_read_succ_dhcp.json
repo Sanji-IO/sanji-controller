@@ -1,0 +1,11 @@
+{
+	"id" : 3,
+	"method" : "GET",
+	"resource" : "/network/dhcp/1",
+	"sign" : ["dhcp"],
+	"code" : 200,
+	"data" : {
+		"name": "dhcp server",
+		"ip range" : "x.x.x.x"
+	}
+}

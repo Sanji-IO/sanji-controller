@@ -1,0 +1,6 @@
+{
+	"id" : 1,
+	"method" : "GET",
+	"resource" : "/network/ethernet/1",
+	"tunnel" : "1"
+}

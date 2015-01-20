@@ -1,0 +1,19 @@
+README for Sanji Controller
+===========================
+
+INTRODUCTION
+
+  Sanji Framework is kind of a IoT integration framework which build on
+  MQTT message queue and RESTful API interface to be accessed.
+
+  Sanji Controller is the controller of Sanji Framework,
+  since it is implemented based on MVC software architecture.
+
+INSTALLATION
+
+  1) Edit ./build/compile.mk to choose the right architecture.
+
+  2) Get into directory ./build
+  
+  3) make
+

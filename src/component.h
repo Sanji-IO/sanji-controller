@@ -1,5 +1,5 @@
-#ifndef _SANJI_COMPONENT_H_
-#define _SANJI_COMPONENT_H_
+#ifndef _SANJI_COMPONENT_H
+#define _SANJI_COMPONENT_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -64,4 +64,4 @@ char *component_get_tunnel_by_name(struct component *, char *);
 }
 #endif
 
-#endif /* _SANJI_COMPONENT_H_ */
+#endif /* _SANJI_COMPONENT_H */

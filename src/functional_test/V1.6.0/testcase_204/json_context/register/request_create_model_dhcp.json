@@ -1,0 +1,21 @@
+{
+	"id" : 5,
+	"method" : "POST",
+	"resource" : "/controller/registration",
+	"tunnel" : "5",
+	"data" : {
+		"name": "dhcp",
+		"description": "dhcp_desc",
+		"role": "model",
+		"ttl": 3,
+		"hook": [
+			"ethernet",
+			"cellular",
+			"wifi"
+			],
+		"resources": [
+			"/network/dhcp",
+			"/network/dhcp/+"
+			]
+	}
+}

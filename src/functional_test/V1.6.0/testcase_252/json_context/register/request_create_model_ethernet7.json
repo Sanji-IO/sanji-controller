@@ -1,0 +1,15 @@
+{
+	"id" : 7,
+	"method" : "POST",
+	"resource" : "/controller/registration",
+	"tunnel" : "7",
+	"data" : {
+		"name": "ethernet7",
+		"description": "ethernet7_desc",
+		"role": "model",
+		"ttl": 3,
+		"resources": [
+			"/network/ethernet/+/+"
+			]
+	}
+}

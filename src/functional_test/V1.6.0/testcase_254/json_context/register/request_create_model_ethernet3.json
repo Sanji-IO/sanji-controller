@@ -1,0 +1,15 @@
+{
+	"id" : 3,
+	"method" : "POST",
+	"resource" : "/controller/registration",
+	"tunnel" : "3",
+	"data" : {
+		"name": "ethernet3",
+		"description": "ethernet3_desc",
+		"role": "model",
+		"ttl": 3,
+		"resources": [
+			"/network/ethernet/"
+			]
+	}
+}

@@ -1,0 +1,11 @@
+{
+	"id" : 1,
+	"method" : "PUT",
+	"resource" : "/network/ethernet/1",
+	"code" : 400,
+	"sign" : ["ethernet"],
+	"data" : {
+		"message": "update ethernet failed.",
+		"log" : "can not find ethernet interface"
+	}
+}

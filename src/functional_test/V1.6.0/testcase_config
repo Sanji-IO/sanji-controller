@@ -1,0 +1,10 @@
+#!/bin/sh
+
+# paths
+PUB_TOOL="../../../tool/pub_example/pub_example"
+SUB_TOOL="../../../tool/sub_example/sub_example"
+JSON_CONTEXT="./json_context"
+
+# topics
+TOPIC_CONTROLLER="/controller"
+

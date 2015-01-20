@@ -1,0 +1,125 @@
+V1.6.0 - 20141217
+=================
+
+[Sanji Controller]
+- Add files: README, CHAGNES, BUGS
+- Modify label name of header files
+- Add ini API
+- Fix retry mechanism bug when connecting mosquitto broker/bridge
+- Add SIGUSR1 to dump controller infomation
+- Support daemonize
+- Support loading controller config file
+- Support event mechanism
+- Support wildcard resource with "+"
+- Change resource lookup mechanism to "precise match"
+- Remove some debug message
+- Fix merge response bug
+- Modify getopt function
+    * Change -h to usage
+    * Change -H to broker host IP
+    * Remove -v
+
+[Functional Test]
+- Refine all functional test
+
+[Lib]
+- Add sanji misc library and example code
+
+[Tool]
+- Add release note generating script
+- Update source code counting script
+
+V1.5.0 - 20140610
+=================
+
+Sanji Controller:
+- Add controller build-in model: Resource Dependency Model
+
+V1.4.0 - 20140609
+=================
+
+Sanji Controller:
+- Update subscribed QoS to 2
+- Support ephemeral request
+- Use ephemeral reuqest for register model
+- Modify dispatch mechanism:
+
+    All build-in model should get through routing mechanism
+    to fulfill the standard protocol of resource and CRUD RESTful API.
+
+    We dispatch procedure based on MQTT topic right now.
+    (replace the old one, dispatch based on 'resource'.)
+
+Functional Test:
+- Seperate to V1.3.0 and V1.4.0(and later version)
+
+    Since there are two big changes, we cannot use the old functional test case:
+    * support ephemeral
+	* modify dispatch mechanism
+
+V1.3.0 - 20140606
+=================
+
+Sanji Controller:
+- Add supporting query string '?'
+- Add supporting subscribed wildcard resource by '#'
+
+V1.2.0 - 20140605
+=================
+
+Sanji Controller:
+- Fix model deregister bug when model listened multi-resources.
+- Fix empty 'data' issue when registration.
+- Add 'id' in ttl-expired response.
+- Update subscribe keepalive to 3600s.
+- Fix get hooked name bug when multiple hooks.
+- Refactor code and naming.
+- Add resource.resource_get_names_by_component()
+- Add resource.resource_reverse_method()
+- Add dependency info in session class
+- Modify lock/unlock target from 'resource' to 'dependency_chain'
+- Add sign/method/resource in session response
+- Add suppoting 'sign'
+- Modify allocate 'view_chain' bug
+- Update QoS of controller message to '1'
+- Add sign/method/resource to controller error response
+- Modify allocate 'hook_component' bug
+- Modify lock/unlock mechanism to all related resource/model
+- Modify that session should keep the original 'resource' from request context
+
+Unit test:
+- Seperate to functional test and model test.
+- Only contain controller/session/resource/component unit test.
+
+Functional test:
+- Only contain controller behavior test.
+
+Model test:
+- Only contain truly model test.
+
+V1.1.0 - 201403025
+==================
+
+Sanji Controller:
+- Change topic routing mechanism to the most longest matched resource.
+- Fix bug happens when resource has no subscribed models.
+
+Unit Test:
+- Add test case for controller v1.1.0.
+
+V1.0.0 - 201403024
+==================
+
+Sanji Controller:
+- First release with full basic functions:
+	* register procedure
+	* routing procedure
+	* ttl mechanism
+	* error response function
+
+Tool:
+- Release basic publish/subscribe programs.
+
+Unit Test:
+- Add test case and json test context for testing controller.
+

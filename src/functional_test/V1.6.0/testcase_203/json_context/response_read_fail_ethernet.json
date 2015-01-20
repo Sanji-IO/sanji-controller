@@ -1,0 +1,11 @@
+{
+	"id" : 1,
+	"method" : "GET",
+	"resource" : "/network/ethernet/1",
+	"sign" : ["ethernet"],
+	"code" : 400,
+	"data" : {
+		"message": "get ip failed.",
+		"log" : "can not find ethernet interface"
+	}
+}

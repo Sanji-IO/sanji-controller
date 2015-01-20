@@ -1,0 +1,5 @@
+{
+	"id" : 5,
+	"method" : "GET",
+	"resource" : "/network/iptable/1"
+}

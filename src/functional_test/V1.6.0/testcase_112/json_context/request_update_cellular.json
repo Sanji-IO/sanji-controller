@@ -1,0 +1,10 @@
+{
+	"id" : 3,
+	"method" : "PUT",
+	"resource" : "/network/cellular/1",
+	"data" : {
+		"id" : 1,
+		"name" : "ppp0",
+		"server ip" : "0.0.0.0"
+	}
+}
