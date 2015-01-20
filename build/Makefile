@@ -11,11 +11,13 @@ OBJS = $(SRCS:.c=.o)
 #VERBOSE = yes
 ifdef VERBOSE
 CFLAGS += -DVERBOSE
+EXEC = sanji_controller_verbose
 endif
 
 DEBUG = yes
 ifdef DEBUG
 CFLAGS += -DDEBUG
+EXEC = sanji_controller_debug
 endif
 
 
@@ -32,4 +34,4 @@ $(EXEC): $(OBJS)
 	$(CC) $(CFLAGS) -c $<
 
 clean: 
-	-rm -f *.o sanji_controller
+	-rm -f *.o sanji_controller sanji_controller_debug sanji_controller_verbose
