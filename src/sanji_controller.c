@@ -155,17 +155,16 @@ void sanji_print_usage(void)
 	int major, minor, revision;
 
 	mosquitto_lib_version(&major, &minor, &revision);
-	printf("mosquitto_sub is a simple mqtt client that will subscribe to a single topic and print all messages it receives.\n");
-	printf("mosquitto_sub version %s running on libmosquitto %d.%d.%d.\n\n", SANJI_VERSION, major, minor, revision);
-	printf("Usage: mosquitto_sub [-c] [-h host] [-k keepalive] [-p port] [-q qos] [-R] [-v] -t topic ...\n");
-	printf("                     [-i id]\n");
-	printf("                     [-u username [-P password]]\n");
-	printf("                     [--will-topic [--will-payload payload] [--will-qos qos] [--will-retain]]\n");
-	printf("       mosquitto_sub --help\n\n");
+	printf("sanji-controller version %s.\n", SANJI_VERSION);
+	printf("Usage: sanji-controller [-c] [-h host] [-k keepalive] [-p port] [-q qos] [-R] [-v] -t topic ...\n");
+	printf("                        [-i id]\n");
+	printf("                        [-u username [-P password]]\n");
+	printf("                        [--will-topic [--will-payload payload] [--will-qos qos] [--will-retain]]\n");
+	printf("       sanji-controller --help\n\n");
 	printf(" -c : disable 'clean session' (store subscription and pending messages when client disconnects).\n");
 	printf(" -d : enable debug messages.\n");
 	printf(" -h : mqtt host to connect to. Defaults to localhost.\n");
-	printf(" -i : id to use for this client. Defaults to mosquitto_sub_ appended with the process id.\n");
+	printf(" -i : id to use for mosquitto client.\n");
 	printf(" -k : keep alive in seconds for this client. Defaults to 60.\n");
 	printf(" -p : network port to connect to. Defaults to 1883.\n");
 	printf(" -q : quality of service level to use for the subscription. Defaults to 0.\n");
@@ -181,7 +180,6 @@ void sanji_print_usage(void)
 	printf(" --will-qos : QoS level for the client Will.\n");
 	printf(" --will-retain : if given, make the client Will retained.\n");
 	printf(" --will-topic : the topic on which to publish the client Will.\n");
-	printf("\nSee http://mosquitto.org/ for more information.\n\n");
 }
 
 void sanji_userdata_free(struct sanji_userdata *ud)
