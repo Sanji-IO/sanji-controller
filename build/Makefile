@@ -5,7 +5,7 @@ CFLAGS = -Wall -I/usr/local/include -I$(SOURCE_DIR)/lib
 LDFLAGS = -L/usr/local/lib -lmosquitto -ljansson
 
 EXEC = sanji_controller
-SRCS = sanji_controller.c resource.c component.c session.c ini.c strext.c
+SRCS = sanji_controller.c resource.c component.c session.c ini.c
 OBJS = $(SRCS:.c=.o)
 LIBS = libsanjimisc.a
 

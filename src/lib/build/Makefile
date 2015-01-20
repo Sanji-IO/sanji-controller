@@ -14,7 +14,8 @@ SRCS = \
        time_util.c \
        lock.c \
 	   pid.c \
-       text_util.c
+       text_util.c \
+	   strext.c
 
 OBJS = $(SRCS:.c=.o)
 
