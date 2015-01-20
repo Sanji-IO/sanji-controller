@@ -422,17 +422,20 @@ int session_step_stop(
 	if (node->curr_step > node->model_chain_count) {
 		/* sesion success: append/update all 'data' */
 		DEBUG_PRINT("session(%d) succeed with total step(%d).", node->id, node->model_chain_count);
+
+		/* must free 'response_root' later */
+		response_root = json_deep_copy(root);
+
 		if (node->result_chain && json_is_array(node->result_chain)) {
 			for (i = 0; i < json_array_size(node->result_chain); i++) {
 				result = json_array_get(node->result_chain, i);
 				if (result && json_is_object(result)) {
 					result_data = json_object_get(result, "data");
-					root_data = json_object_get(root, "data");
+					root_data = json_object_get(response_root, "data");
 					json_object_update(root_data, result_data);
 				}
 			}
 		}
-		response_root = root;
 
 	} else if (!root) {
 		/* sesion fail due to ttl: add 'code', 'id' */
@@ -465,15 +468,18 @@ int session_step_stop(
 
 	} else {
 		DEBUG_PRINT("session(%d) failed at step(%d/%d), at wait(%d).", node->id, node->curr_step, node->model_chain_count, node->curr_wait);
+
+		/* must free 'response_root' later */
+		response_root = json_deep_copy(root);
+
 		/* sesion fail: merge return 'code', write 'log' and 'message' */
 #if 0 // Merge result
-		json_object_del(root, "data");
+		json_object_del(response_root, "data");
 		data = json_object();
 		json_object_set_new(data, "message", json_string("failed to operate the resource, please see log for more details."));
 		json_object_set(data, "log", node->result_chain);
-		json_object_set_new(root, "data", data);
+		json_object_set_new(response_root, "data", data);
 #endif
-		response_root = root;
 	}
 
 	/* dump response context */
@@ -481,12 +487,12 @@ int session_step_stop(
 		packet_context = json_dumps(response_root, JSON_INDENT(4));
 		if (!packet_context) {
 			DEBUG_PRINT("Error: out of memory");
-			if (!root) json_decref(response_root);
+			json_decref(response_root);
 			return SANJI_INTERNAL_ERROR;
 		}
 		packet_context_len = strlen(packet_context);
 	}
-	if (!root) json_decref(response_root);
+	json_decref(response_root);
 
 	ud = (struct sanji_userdata *)obj;
 	if (strlen(node->tunnel) > 0) {

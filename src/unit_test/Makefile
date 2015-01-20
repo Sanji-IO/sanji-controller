@@ -28,4 +28,4 @@ $(EXEC): $(OBJS)
 	$(CC) $(CFLAGS) -c $<
 
 clean: 
-	-rm -f *.o $(EXEC) component_example resource_example session_example
+	-rm -f *.o $(EXEC) component_example resource_example session_example component_unit_test resource_unit_test session_unit_test
