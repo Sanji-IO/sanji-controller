@@ -49,11 +49,31 @@ char sanji_register_topic[] = SANJI_REGISTER_TOPIC;
 char sanji_dependency_topic[] = SANJI_RESOURCE_DEPENDENCY_TOPIC;
 
 static int sanji_run = 1;
+static int sanji_dump = 0;
+static int sanji_retry = 0;
 
 struct resource *sanji_resource = NULL;
 struct component *sanji_component = NULL;
 struct session *sanji_session = NULL;
 
+
+/*
+ * ##########################
+ * SANJI SIGNAL HANDLER
+ * ##########################
+ */
+void sanji_signal_quit(int s)
+{
+	DEBUG_PRINT("SIGNAL: get quit signal.");
+	sanji_run = 0;
+	sanji_retry = 0;
+}
+
+void sanji_signal_dump(int s)
+{
+	DEBUG_PRINT("SIGNAL: get dump signal.");
+	sanji_dump = 1;
+}
 
 /*
  * ##########################
@@ -92,6 +112,24 @@ void sanji_print_usage(void)
 	printf(" --will-topic : the topic on which to publish the client Will.\n");
 }
 
+void sanji_dump_info()
+{
+	if (sanji_dump) {
+		fprintf(stderr, "SANJI: dump component:\n");
+		component_display(sanji_component);
+		fprintf(stderr, "SANJI: dump resource:\n");
+		resource_display(sanji_resource);
+		fprintf(stderr, "SANJI: dump session:\n");
+		session_display(sanji_session);
+
+		sanji_dump = 0;
+	}
+}
+
+void sanji_userdata_init(struct sanji_userdata *ud)
+{
+}
+
 void sanji_userdata_free(struct sanji_userdata *ud)
 {
 	if (ud) {
@@ -101,11 +139,6 @@ void sanji_userdata_free(struct sanji_userdata *ud)
 	}
 }
 
-void sanji_signal_handler(int s)
-{
-	fprintf(stderr, "SANJI: signal_handler: get stop signal.\n");
-	sanji_run = 0;
-}
 
 int _sanji_response(char *tunnel, char *context)
 {
@@ -1768,7 +1801,7 @@ void sanji_refresh_session()
 
 	get_timestamp(TIMESTAMP_MODE_MONOTONIC, timestamp, TIMESTAMP_LEN);
 	now_time = atol(timestamp);
-	DEBUG_PRINT("now time(%ld)", now_time);
+	//DEBUG_PRINT("now time(%ld)", now_time);
 	if (last_time) {
 		diff_time = (unsigned int)(now_time - last_time);
 		if (diff_time) {
@@ -1892,9 +1925,10 @@ int main(int argc, char *argv[])
 	int will_qos = 0;
 	bool will_retain = false;
 	/* temp variable */
-	int retry = SANJI_RETRY_TIMES;
 	int i;
 	int rc;
+
+	sanji_retry = SANJI_RETRY_TIMES;
 
 	/* initialized program and user data structure */
 	ud = malloc(sizeof(struct sanji_userdata));
@@ -2126,11 +2160,12 @@ int main(int argc, char *argv[])
 
 	/* TODO: support config file, add sanji_controller_config structure */
 
-	/* TODO: daemonlize */
-
 	/* setup signal handler */
-	signal(SIGINT, sanji_signal_handler);
-	signal(SIGTERM, sanji_signal_handler);
+	signal(SIGINT, sanji_signal_quit);
+	signal(SIGTERM, sanji_signal_quit);
+	signal(SIGUSR1, sanji_signal_dump);
+
+	/* TODO: daemonlize */
 
 	/* init mosquitto library */
 	mosquitto_lib_init();
@@ -2178,7 +2213,7 @@ int main(int argc, char *argv[])
 	mosquitto_subscribe_callback_set(mosq, sanji_subscribe_callback);
 
 	/* connect mosquitto */
-	while (retry > 0) {
+	do {
 		rc = mosquitto_connect(mosq, host, port, keepalive);
 		if (rc) {
 			if (rc == MOSQ_ERR_ERRNO) {
@@ -2186,12 +2221,12 @@ int main(int argc, char *argv[])
 			} else {
 				fprintf(stderr, "ERROR: Unable to connect (%d: %s).\n", rc, mosquitto_strerror(rc));
 			}
-			retry--;
+			if (sanji_retry > 0) sanji_retry--;
 			sleep(1);
 		} else {
 			break;
 		}
-	}
+	} while (sanji_retry > 0 || sanji_retry < 0);
 	if (rc) {
 		mosquitto_destroy(mosq);
 		mosquitto_lib_cleanup();
@@ -2208,6 +2243,7 @@ int main(int argc, char *argv[])
 
 		/*  refresh ttl for each session */
 		sanji_refresh_session();
+		sanji_dump_info();
 
 		if (sanji_run && rc) {
 			fprintf(stderr, "SANJI: reconnect to server\n");
@@ -2219,7 +2255,7 @@ int main(int argc, char *argv[])
 	/* clear mosquitto */
 	mosquitto_destroy(mosq);
 	mosquitto_lib_cleanup();
-	/* clear sanji user data  */
+	/* clear sanji user data */
 	sanji_userdata_free(ud);
 	/* clear sanji controller objects */
 	if (sanji_resource) resource_free(sanji_resource);
