@@ -1,5 +1,5 @@
-#ifndef _SANJI_ERROR_H_
-#define _SANJI_ERROR_H_
+#ifndef _SANJI_ERROR_H
+#define _SANJI_ERROR_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -19,4 +19,4 @@ extern "C" {
 }
 #endif
 
-#endif  /* _SANJI_HTTP_H_ */
+#endif  /* _SANJI_ERROR_H */

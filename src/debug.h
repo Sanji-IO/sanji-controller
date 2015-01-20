@@ -1,5 +1,5 @@
-#ifndef _DEBUG_H_
-#define _DEBUG_H_
+#ifndef _DEBUG_H
+#define _DEBUG_H
 
 /* debug macro */
 #if defined DEBUG
@@ -10,4 +10,4 @@
 #define DEBUG_PRINT(fmt, ...)
 #endif
 
-#endif /* _DEBUG_H_ */
+#endif /* _DEBUG_H */

@@ -1,5 +1,5 @@
-#ifndef _SANJI_SESSION_H_
-#define _SANJI_SESSION_H_
+#ifndef _SANJI_SESSION_H
+#define _SANJI_SESSION_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -94,4 +94,4 @@ void session_decref_ttl(struct session *, struct resource *, struct component *,
 }
 #endif
 
-#endif /* _SANJI_SESSION_H_ */
+#endif /* _SANJI_SESSION_H */

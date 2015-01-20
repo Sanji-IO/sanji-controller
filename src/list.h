@@ -516,4 +516,4 @@ static inline void hlist_add_after(struct hlist_node *n,
 	     pos = n)
 
 
-#endif
+#endif /* _LINUX_LIST_H */
