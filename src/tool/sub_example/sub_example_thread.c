@@ -15,6 +15,7 @@
 #include <mosquitto.h>
 
 #define MQTT_VERSION "1.0.0"
+#define MQTT_BUFSIZE 1024
 #define MQTT_ERR_BUFSIZE 256
 #define MQTT_HOSTNAME_BUFSIZE 256
 #define MQTT_IP_LEN 16
@@ -36,6 +37,7 @@ struct mqtt_userdata {
 	int verbose;
 	bool quiet;
 	bool no_retain;
+	int mid_sent;
 };
 
 /*
@@ -75,6 +77,7 @@ void mqtt_message_callback(struct mosquitto *mosq, void *obj, const struct mosqu
 			fflush(stdout);
 		}
 	}
+	sleep(10);
 }
 
 void mqtt_connect_callback(struct mosquitto *mosq, void *obj, int result)
@@ -181,6 +184,7 @@ int main(int argc, char *argv[])
 	struct mqtt_userdata *ud = NULL;
 	bool clean_session = true;
 	bool debug = false;
+	char buf[MQTT_BUFSIZE];
 	char err[MQTT_ERR_BUFSIZE];
 	/* client id */
 	char id[MQTT_ID_LEN];
@@ -478,17 +482,24 @@ int main(int argc, char *argv[])
 		return rc;
 	}
 
+	mosquitto_loop_start(mosq);
+
 	/*
 	 * loop mosquitto,
 	 * it use select() to call back the callback-function which defined before.
 	 */
-	while (run) {
-		rc = mosquitto_loop(mosq, 1000, 1);
-		if (run && rc) {
-			fprintf(stderr, "MQTT: reconnect to server\n");
-			mosquitto_reconnect(mosq);
+	do{
+		if (fgets(buf, sizeof(buf), stdin)) {
+			buf[strlen(buf)-1] = '\0';
+			rc = mosquitto_publish(mosq, &ud->mid_sent, "simon", strlen(buf), buf, 0, 0);
+			if (rc) {
+				if (!ud->quiet) fprintf(stderr, "Error: Publish returned %d, disconnecting.\n", rc);
+				mosquitto_disconnect(mosq);
+			}
 		}
-	}
+	} while (rc == MOSQ_ERR_SUCCESS);
+
+	mosquitto_loop_stop(mosq, false);
 
 	/* free mosquitto */
 	mosquitto_destroy(mosq);
