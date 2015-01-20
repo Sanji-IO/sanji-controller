@@ -18,16 +18,33 @@ extern "C" {
 #define SANJI_MAX_CONTEXT_LEN (1024 * 1024)
 #define SANJI_MAX_PATH MAX_PATH
 
+/* resource match algorithm */
+#define SANJI_MATCH_ALG_EXACT 1
+#define SANJI_MATCH_ALG_LONGEST 2
+
+/* sanji message header */
+#define SANJI_HEADER_NO_ID 0
+#define SANJI_HEADER_NO_METHOD (-2)
+#define SANJI_HEADER_NO_CODE (-1)
+
 /* controller topics */
 #define SANJI_CONTROLLER_NAME "controller"
 #define SANJI_CONTROLLER_TOPIC "/controller"
 #define SANJI_CONTROLLER_TOPIC_LEN 11
+
+/* build-in model topics and resources */
 #define SANJI_REGISTER_NAME "registration"
 #define SANJI_REGISTER_TOPIC "/controller/registration"
 #define SANJI_REGISTER_TOPIC_LEN 24
+#define SANJI_REGISTER_RESOURCE SANJI_REGISTER_TOPIC
+#define SANJI_REGISTER_WILDCARD_RESOURCE "/controller/registration/+"
+#define SANJI_REGISTER_RESOURCE_LEN 24
 #define SANJI_DEPENDENCY_NAME "dependency"
 #define SANJI_RESOURCE_DEPENDENCY_TOPIC "/controller/resource/dependency"
 #define SANJI_RESOURCE_DEPENDENCY_TOPIC_LEN 31
+#define SANJI_RESOURCE_DEPENDENCY_RESOURCE SANJI_RESOURCE_DEPENDENCY_TOPIC
+#define SANJI_RESOURCE_DEPENDENCY_WILDCARD_RESOURCE "/controller/resource/dependency/+"
+#define SANJI_RESOURCE_DEPENDENCY_RESOURCE_LEN 31
 
 /* sanji configs */
 #define SANJI_INI_SECTION_GLOBAL "global"

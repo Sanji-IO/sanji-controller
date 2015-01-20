@@ -522,33 +522,53 @@ struct resource *resource_lookup_node_by_name(struct resource *head, const char 
 	return NULL;
 }
 
-/* lookup for wildcard '#' */
+/* lookup for wildcard '#' and '+' */
 struct resource **resource_lookup_wildcard_nodes_by_name(struct resource *head, const char *name, unsigned int *resources_count)
 {
 	struct resource *curr = NULL;
 	struct resource **resources = NULL;
+	char resource_name[RESOURCE_NAME_LEN];
 	char _name[RESOURCE_NAME_LEN];
-	char *p = NULL;
+	char *p, *q;
 
 	*resources_count = 0;
 
 	if (head) {
 		list_for_each_entry(curr, &head->list, list) {
 			/* deep copy curr->name */
+			memset(resource_name, '\0', RESOURCE_NAME_LEN);
+			strncpy(resource_name, curr->name, RESOURCE_NAME_LEN);
 			memset(_name, '\0', RESOURCE_NAME_LEN);
-			strncpy(_name, curr->name, RESOURCE_NAME_LEN);
+			strncpy(_name, name, RESOURCE_NAME_LEN);
 
-			/* truncate the character before '#' */
-			p = strchr(_name, '#');
-			if (p) {
-				*p = '\0';
+			/* truncate '?' */
+			p = strrchr(_name, '?');
+			if (p) *p = '\0';
 
-				/* start lookup */
-				if (!strncmp(_name, name, strlen(_name))) {
-					(*resources_count)++;
-					resources = realloc(resources, (*resources_count) * sizeof(struct resource *));
-					resources[(*resources_count) - 1] = curr;
+			p = resource_name;
+			q = _name;
+			/* start lookup */
+			while (*p && *q) {
+				if (*p == '#') {
+					break;
+				} else if (*p == '+') {
+					if (*q == '/') break;
+
+					p++;
+					while ((*q != '/') && *q) {
+						q++;
+					}
+				} else {
+					if (*p != *q) break;
+					p++;
+					q++;
 				}
+			}
+
+			if ((*p == '#' && *q) || (!*p && !*q)) {
+				(*resources_count)++;
+				resources = realloc(resources, (*resources_count) * sizeof(struct resource *));
+				resources[(*resources_count) - 1] = curr;
 			}
 		}
 	}

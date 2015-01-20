@@ -15,7 +15,7 @@ CFLAGS += -DVERBOSE
 EXEC = sanji_controller_verbose
 endif
 
-DEBUG = yes
+#DEBUG = yes
 ifdef DEBUG
 CFLAGS += -DDEBUG
 EXEC = sanji_controller_debug
