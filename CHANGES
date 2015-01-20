@@ -1,3 +1,34 @@
+V1.6.0 - 20141217
+=================
+
+[Sanji Controller]
+- Add files: README, CHAGNES, BUGS
+- Modify label name of header files
+- Add ini API
+- Fix retry mechanism bug when connecting mosquitto broker/bridge
+- Add SIGUSR1 to dump controller infomation
+- Support daemonize
+- Support loading controller config file
+- Support event mechanism
+- Support wildcard resource with "+"
+- Change resource lookup mechanism to "precise match"
+- Remove some debug message
+- Fix merge response bug
+- Modify getopt function
+    * Change -h to usage
+    * Change -H to broker host IP
+    * Remove -v
+
+[Functional Test]
+- Refine all functional test
+
+[Lib]
+- Add sanji misc library and example code
+
+[Tool]
+- Add release note generating script
+- Update source code counting script
+
 V1.5.0 - 20140610
 =================
 
