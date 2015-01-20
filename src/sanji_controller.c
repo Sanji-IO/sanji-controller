@@ -28,6 +28,10 @@
 #include "resource.h"
 #include "component.h"
 #include "session.h"
+#include "ini.h"
+#include "lock.h"
+#include "pid.h"
+#include "time_util.h"
 
 
 /*
@@ -55,71 +59,6 @@ struct session *sanji_session = NULL;
  * MISC FUNCTIONS
  * ##########################
  */
-#ifdef WIN32
-static bool tick64 = false;
-void _windows_time_version_check(void)
-{
-	OSVERSIONINFO vi;
-	tick64 = false;
-
-	memset(&vi, 0, sizeof(OSVERSIONINFO));
-	vi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
-	if (GetVersionEx(&vi)) {
-		if (vi.dwMajorVersion > 5) {
-			tick64 = true;
-		}
-	}
-}
-#endif
-
-char *get_timestamp(int mode)
-{
-	static char timestamp[SANJI_TIMESTAMP_LEN];
-	struct timespec tp;
-	time_t ltime;
-	struct tm *tm_time;
-
-	memset(timestamp, '\0', SANJI_TIMESTAMP_LEN);
-
-	switch (mode) {
-	case SANJI_TIMESTAMP_MODE_MONOTONIC:
-#ifdef WIN32
-		_windows_time_version_check();
-		if (tick64) {
-			return GetTickCount64()/1000;
-		} else {
-			return GetTickCount()/1000; // FIXME: need to deal with overflow.
-		}
-#elif _POSIX_TIMERS>0 && defined(_POSIX_MONOTONIC_CLOCK)
-
-		clock_gettime(CLOCK_MONOTONIC, &tp);
-		sprintf(timestamp, "%ld", tp.tv_sec);
-#else
-		sprintf(timestamp, "%ld", time(NULL));
-#endif
-		break;
-
-	case SANJI_TIMESTAMP_MODE_UNIXTIME:
-		sprintf(timestamp, "%ld", time(NULL));
-		break;
-
-	case SANJI_TIMESTAMP_MODE_DATETIME:
-	default:
-		time(&ltime);
-		tm_time = localtime(&ltime);
-		sprintf(timestamp, "%04d%02d%02d%02d%02d%02d"
-				, (1900 + tm_time->tm_year)
-				, (1 + tm_time->tm_mon)
-				, tm_time->tm_mday
-				, tm_time->tm_hour
-				, tm_time->tm_min
-				, tm_time->tm_sec);
-		break;
-	}
-
-	return timestamp;
-}
-
 int generate_random(int mode)
 {
 #ifndef WIN32
@@ -451,7 +390,7 @@ int register_create(char *name, char *description, char *role, char *hook, unsig
 	/* create a unique random tunnel */
 	do {
 		memset(tunnel, '\0', COMPONENT_TUNNEL_LEN);
-		sprintf(tunnel, "%d", generate_random(SANJI_RAND_MODE_RANDOM));
+		sprintf(tunnel, "%u", generate_random(SANJI_RAND_MODE_RANDOM));
 	} while (!component_is_unique_tunnel(sanji_component, tunnel));
 
 	if (component_add_node(sanji_component, name, description, tunnel, role, hook, hook_count, ttl, 0)) {
@@ -1854,9 +1793,11 @@ void sanji_refresh_session()
 	static time_t last_time = 0;
 	static time_t now_time = 0;
 	static unsigned int diff_time = 0;
+	static char timestamp[TIMESTAMP_LEN];
 
-	now_time = atol(get_timestamp(SANJI_TIMESTAMP_MODE_MONOTONIC));
-//	DEBUG_PRINT("now time(%ld)", now_time);
+	get_timestamp(TIMESTAMP_MODE_MONOTONIC, timestamp, TIMESTAMP_LEN);
+	now_time = atol(timestamp);
+	DEBUG_PRINT("now time(%ld)", now_time);
 	if (last_time) {
 		diff_time = (unsigned int)(now_time - last_time);
 		if (diff_time) {
@@ -2212,7 +2153,7 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "Warning: Not using password since username not set.\n");
 	}
 
-	/* TODO: support config file */
+	/* TODO: support config file, add sanji_controller_config structure */
 
 	/* TODO: daemonlize */
 

@@ -1,12 +1,13 @@
 include ./compile.mk
 
 SOURCE_DIR = ../src
-CFLAGS = -Wall -I/usr/local/include
+CFLAGS = -Wall -I/usr/local/include -I$(SOURCE_DIR)/lib
 LDFLAGS = -L/usr/local/lib -lmosquitto -ljansson
 
 EXEC = sanji_controller
-SRCS = sanji_controller.c resource.c component.c session.c
+SRCS = sanji_controller.c resource.c component.c session.c ini.c strext.c
 OBJS = $(SRCS:.c=.o)
+LIBS = libsanjimisc.a
 
 #VERBOSE = yes
 ifdef VERBOSE
@@ -23,8 +24,12 @@ endif
 
 .PHONY: all clean
 
-all: $(EXEC)
+all: $(LIBS) $(EXEC)
 	-rm *.o
+
+$(LIBS):
+	make -C $(SOURCE_DIR)/lib/build
+	cp $(SOURCE_DIR)/lib/build/$(LIBS) .
 
 $(EXEC): $(OBJS)
 	$(LD) -o $@ $(OBJS) $(LIBS) $(LDFLAGS)
@@ -34,4 +39,5 @@ $(EXEC): $(OBJS)
 	$(CC) $(CFLAGS) -c $<
 
 clean: 
-	-rm -f *.o sanji_controller sanji_controller_debug sanji_controller_verbose
+	make -C $(SOURCE_DIR)/lib/build clean
+	-rm -f *.o $(LIBS) sanji_controller sanji_controller_debug sanji_controller_verbose

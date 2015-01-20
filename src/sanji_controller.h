@@ -1,5 +1,5 @@
-#ifndef _SANJI_CONTROLLER_H_
-#define _SANJI_CONTROLLER_H_
+#ifndef _SANJI_CONTROLLER_H
+#define _SANJI_CONTROLLER_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -15,12 +15,6 @@ extern "C" {
 #define SANJI_IP_LEN 16
 #define SANJI_ID_LEN (MOSQ_MQTT_ID_MAX_LENGTH + 32)
 #define SANJI_MESSAGE_LEN 256
-
-/* mode of timestamp */
-#define SANJI_TIMESTAMP_LEN 32
-#define SANJI_TIMESTAMP_MODE_MONOTONIC 0
-#define SANJI_TIMESTAMP_MODE_UNIXTIME 1
-#define SANJI_TIMESTAMP_MODE_DATETIME 2
 
 /* mode of random number generator */
 #define SANJI_RAND_MODE_SEQ 0
@@ -77,4 +71,4 @@ struct sanji_userdata {
 }
 #endif
 
-#endif /* _SANJI_CONTROLLER_H_ */
+#endif /* _SANJI_CONTROLLER_H */
