@@ -1,0 +1,9 @@
+{
+	"method" : "POST",
+	"resource" : "/network/wifi",
+	"data" : {
+		"id": 1,
+		"name": "wlan0",
+		"server ip": "0.0.0.0"
+	}
+}

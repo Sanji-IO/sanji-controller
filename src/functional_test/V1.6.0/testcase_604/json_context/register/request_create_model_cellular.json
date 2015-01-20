@@ -1,0 +1,16 @@
+{
+	"id" : 2,
+	"method" : "POST",
+	"resource" : "/controller/registration",
+	"tunnel" : "2",
+	"data" : {
+		"name": "cellular",
+		"description": "cellular_desc",
+		"role": "model",
+		"ttl": 5,
+		"resources": [
+			"/network/cellular",
+			"/network/cellular/+"
+			]
+	}
+}

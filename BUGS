@@ -1,0 +1,4 @@
+Known Bug List
+- One model subscribed two resources which match the same topic.
+  Controller will generate two resource_list and two component_list,
+  when controller locked components will get "component is busy" error.

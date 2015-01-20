@@ -1,0 +1,8 @@
+{
+	"id" : 1,
+	"method" : "PUT",
+	"resource" : "/controller/resource/dependency?resource=/network/ethernet",
+	"tunnel" : "1",
+	"data" : {
+	}
+}

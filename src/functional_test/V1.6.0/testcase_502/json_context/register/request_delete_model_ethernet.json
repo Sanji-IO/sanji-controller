@@ -1,0 +1,9 @@
+{
+	"id" : 1,
+	"method" : "DELETE",
+	"resource" : "/controller/registration",
+	"tunnel" : "1",
+	"data" : {
+		"name": "ethernet"
+	}
+}

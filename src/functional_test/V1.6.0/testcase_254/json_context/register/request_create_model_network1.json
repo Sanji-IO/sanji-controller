@@ -1,0 +1,15 @@
+{
+	"id" : 1,
+	"method" : "POST",
+	"resource" : "/controller/registration",
+	"tunnel" : "1",
+	"data" : {
+		"name": "network1",
+		"description": "network1_desc",
+		"role": "model",
+		"ttl": 3,
+		"resources": [
+			"/network/+"
+			]
+	}
+}

@@ -1,0 +1,9 @@
+{
+	"method" : "POST",
+	"resource" : "/network/ethernet",
+	"data" : {
+		"id": "1",
+		"name": "eth0",
+		"server ip" : "0.0.0.0"
+	}
+}

@@ -1,0 +1,10 @@
+{
+	"id" : 1000,
+	"method" : "PUT",
+	"resource" : "/network/ethernet/eth1",
+	"code" : 400,
+	"data" : {
+		"message": "dhcp wrong",
+		"log" : "dhcp wrong, because ..."
+	}
+}

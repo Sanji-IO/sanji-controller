@@ -1,0 +1,16 @@
+{
+	"id" : 3,
+	"method" : "POST",
+	"resource" : "/controller/registration",
+	"tunnel" : "3",
+	"data" : {
+		"name": "wifi",
+		"description": "wifi_desc",
+		"role": "model",
+		"ttl": 3,
+		"resources": [
+			"/network/wifi",
+			"/network/wifi/+"
+			]
+	}
+}

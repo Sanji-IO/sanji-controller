@@ -1,0 +1,15 @@
+{
+	"id" : 3,
+	"method" : "POST",
+	"resource" : "/controller/registration",
+	"tunnel" : "3",
+	"data" : {
+		"name": "v-root3",
+		"description": "v-root3_desc",
+		"role": "view",
+		"ttl": 3,
+		"resources": [
+			"/+/#"
+			]
+	}
+}

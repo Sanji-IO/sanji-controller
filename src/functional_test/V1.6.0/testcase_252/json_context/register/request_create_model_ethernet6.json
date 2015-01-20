@@ -1,0 +1,15 @@
+{
+	"id" : 6,
+	"method" : "POST",
+	"resource" : "/controller/registration",
+	"tunnel" : "6",
+	"data" : {
+		"name": "ethernet6",
+		"description": "ethernet6_desc",
+		"role": "model",
+		"ttl": 3,
+		"resources": [
+			"/network/ethernet/1+"
+			]
+	}
+}

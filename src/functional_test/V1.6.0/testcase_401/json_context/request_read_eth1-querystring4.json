@@ -1,0 +1,5 @@
+{
+	"id" : 104,
+	"method" : "GET",
+	"resource" : "/network/ethernet/eth1?true"
+}

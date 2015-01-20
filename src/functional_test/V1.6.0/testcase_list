@@ -1,0 +1,59 @@
+#!/bin/sh
+
+#############################################
+# Case 1xx: Controller Basic Test
+# Case 2xx: Routing - Request/Response Test
+# Case 3xx: Routing - Event Test
+# Case 4xx:
+# Case 5xx: Build-in Model - Registration Test
+# Case 6xx: Build-in Model - Resource Dependency Test
+#############################################
+
+# 101: inflight session
+# 102: lock mechnism. Controller should lock related resource/model for write-like request
+# 103: lock mechnism (model listen multi-resources)
+# 104: lock mechnism (hooked situsation)
+
+# +401: basic TTL function
+
+# 201: routing read-like request
+# 202: routing read-like request (no registered resource)
+# 203: routing read-like request (resource subscribed only by 'view')
+# 204: routing read-like request (no session)
+# 205: routing read-like request (session is inflight)
+# 206: routing read-like request (different session with the same session 'id')
+# 207: routing read-like request (multi-read)
+# 208: routing read-like request (model listen multi-resources)
+# 209: routing read-like request (model listen overlap multi-resources)
+# 210: routing read-like request (hooked situation) different level
+
+# +226: routing write-like request with dependency
+# +227: routing write-like request with dependency, but some model fail
+
+# 251: resource lookup
+# 252: resource lookup (wildcard '+')
+# 253: resource lookup (wildcard '#')
+# 254: resource lookup (quesry string '?')
+
+# +2x7: controller should support ephemeral request
+
+# 301: event communication
+# 302: event communication (no registered view)
+# 303: event communication (multi-view)
+
+# 501: basic create and delete ([id] in 'resource')
+# 502: basic create and delete ([id] in 'data')
+# 503: 'method' should be case-insensitive
+# 504: 'data' should have fool prevent for incomplete entry
+# 505: CRUD operations (basic function)
+# 506: CRUD operations (error exception)
+# 507: create and delete with hook mechanism
+# 508: model should be able to listen multi-resources
+# 509: model should be able to listen multi-resources (random register/deregister sequence)
+
+# 601: test basic CRUD method. Resource dependecy resource only support 'read' method.
+# 602: test resource listened by multi models
+# 603: test resource listened by multi views
+# 604: test hook situations
+# 605: test multi-hook
+# 606: test multi-hook and multi-level hook

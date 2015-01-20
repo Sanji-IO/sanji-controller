@@ -1,0 +1,9 @@
+{
+	"id" : 1,
+	"method" : "PUT",
+	"resource" : "/controller/registration/ethernet",
+	"tunnel" : "1",
+	"data" : {
+		"ttl": 10
+	}
+}

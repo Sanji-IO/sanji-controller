@@ -1,0 +1,10 @@
+{
+	"id" : 1000,
+	"method" : "PUT",
+	"resource" : "/network/ethernet/eth1",
+	"tunnel" : "asdjf;alkj",
+	"data" : {
+		"name": "eth1",
+		"server ip" : "0.0.0.0"
+	}
+}

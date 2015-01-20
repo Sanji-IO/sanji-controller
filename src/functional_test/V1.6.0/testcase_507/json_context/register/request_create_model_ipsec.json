@@ -1,0 +1,17 @@
+{
+	"id" : 4,
+	"method" : "POST",
+	"resource" : "/controller/registration",
+	"tunnel" : "4",
+	"data" : {
+		"name": "ipsec",
+		"description": "ipsec_desc",
+		"role": "model",
+		"ttl": 5,
+		"hook": "ethernet",
+		"resources": [
+			"/network/ipsec",
+			"/network/ipsec/+"
+			]
+	}
+}

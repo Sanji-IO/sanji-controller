@@ -1,0 +1,5 @@
+{
+	"id" : 2,
+	"method" : "GET",
+	"resource" : "/network/cellular/1"
+}

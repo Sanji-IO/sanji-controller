@@ -1,0 +1,6 @@
+{
+	"id" : 1,
+	"method" : "DELETE",
+	"resource" : "/controller/resource/dependency/[id]",
+	"tunnel" : "1"
+}

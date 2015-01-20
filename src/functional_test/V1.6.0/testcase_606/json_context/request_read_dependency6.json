@@ -1,0 +1,6 @@
+{
+	"id" : 6,
+	"method" : "GET",
+	"resource" : "/controller/resource/dependency?resource=/network/iptable",
+	"tunnel" : "6"
+}

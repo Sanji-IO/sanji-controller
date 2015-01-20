@@ -1,0 +1,15 @@
+{
+	"id" : 4,
+	"method" : "POST",
+	"resource" : "/controller/registration",
+	"tunnel" : "4",
+	"data" : {
+		"name": "root4",
+		"description": "root4_desc",
+		"role": "model",
+		"ttl": 3,
+		"resources": [
+			"/networ+"
+			]
+	}
+}

@@ -1,0 +1,10 @@
+{
+	"id" : 5,
+	"method" : "GET",
+	"resource" : "/network/iptable/1",
+	"sign" : ["iptable"],
+	"code" : 200,
+	"data" : {
+		"black list" : "0.0.0.0"
+	}
+}

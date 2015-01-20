@@ -1,0 +1,16 @@
+{
+	"id" : 7,
+	"method" : "POST",
+	"resource" : "/controller/registration",
+	"tunnel" : "7",
+	"data" : {
+		"name": "v-ethernet",
+		"description": "v-ethernet_desc",
+		"role": "view",
+		"ttl": 3,
+		"resources": [
+			"/network/ethernet",
+			"/network/ethernet/+"
+			]
+	}
+}

@@ -1,0 +1,6 @@
+{
+	"id" : 2,
+	"method" : "DELETE",
+	"resource" : "/controller/registration/v-ethernet",
+	"tunnel" : "2"
+}

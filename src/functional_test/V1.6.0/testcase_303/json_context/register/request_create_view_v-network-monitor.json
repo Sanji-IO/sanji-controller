@@ -1,0 +1,19 @@
+{
+	"id" : 3,
+	"method" : "POST",
+	"resource" : "/controller/registration/v-network-monitor",
+	"tunnel" : "3",
+	"data" : {
+		"description": "v-network-monitor_desc",
+		"role": "view",
+		"ttl": 5,
+		"resources": [
+			"/network/ethernet",
+			"/network/ethernet/+",
+			"/network/cellular",
+			"/network/cellular/+",
+			"/network/wifi",
+			"/network/wifi/+"
+			]
+	}
+}
