@@ -38,13 +38,13 @@ daemonize_process(int enable_stdio)
 	signal(SIGHUP, SIG_IGN);
 #endif
 #ifdef SIGTSTP
-	signal( SIGTSTP, SIG_IGN );
+	signal(SIGTSTP, SIG_IGN);
 #endif
 #ifdef SIGTTIN
-	signal( SIGTTIN, SIG_IGN );
+	signal(SIGTTIN, SIG_IGN);
 #endif
 #ifdef SIGTTOU
-	signal( SIGTTOU, SIG_IGN );
+	signal(SIGTTOU, SIG_IGN);
 #endif
 
     /*

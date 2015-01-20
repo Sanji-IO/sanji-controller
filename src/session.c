@@ -492,14 +492,14 @@ int session_step_stop(
 	if (strlen(node->tunnel) > 0) {
 		/* if we get 'code->tunnel', ONLY response to it */
 		DEBUG_PRINT("session(%d) sends to single tunnel(%s).", node->id, node->tunnel);
-		mosquitto_publish(mosq, &ud->mid_sent, node->tunnel, packet_context_len, packet_context, ud->qos_sent, ud->retain_sent);
+		mosquitto_publish(mosq, &ud->mid_sent, node->tunnel, packet_context_len, packet_context, ud->pub_qos, ud->retain_sent);
 	} else {
 		/* response to all views */
 		for (i = 0; i < node->view_chain_count; i++) {
 			view = node->view_chain + i * COMPONENT_NAME_LEN;
 			tunnel = component_get_tunnel_by_name(component_list, view);
 			DEBUG_PRINT("session(%d) sends to view(%s) with tunnel(%s).", node->id, view, tunnel);
-			mosquitto_publish(mosq, &ud->mid_sent, tunnel, packet_context_len, packet_context, ud->qos_sent, ud->retain_sent);
+			mosquitto_publish(mosq, &ud->mid_sent, tunnel, packet_context_len, packet_context, ud->pub_qos, ud->retain_sent);
 		}
 	}
 	if (packet_context) {
@@ -588,7 +588,7 @@ int session_step(
 		model = model_chain->models + i * COMPONENT_NAME_LEN;
 		tunnel = component_get_tunnel_by_name(component_list, model);
 		DEBUG_PRINT("session(%d) on step(%d/%d) sends to model(%s) with tunnel(%s) in wait(%d/%d)", node->id, node->curr_step, node->model_chain_count, model, tunnel, i + 1, node->curr_wait);
-		mosquitto_publish(mosq, &ud->mid_sent, tunnel, packet_context_len, packet_context, ud->qos_sent, ud->retain_sent);
+		mosquitto_publish(mosq, &ud->mid_sent, tunnel, packet_context_len, packet_context, ud->pub_qos, ud->retain_sent);
 	}
 	DEBUG_PRINT("%s", packet_context);
 	free(packet_context);

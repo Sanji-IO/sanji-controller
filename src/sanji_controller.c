@@ -19,20 +19,23 @@
 #  include <winsock2.h>
 #  define snprintf sprintf_s
 #endif
-
+/* open source */
 #include <mosquitto.h>
 #include <jansson.h>
+/* src */
 #include "sanji_controller.h"
+#include "ini.h"
 #include "list.h"
 #include "debug.h"
 #include "resource.h"
 #include "component.h"
 #include "session.h"
-#include "ini.h"
+/* lib */
 #include "lock.h"
 #include "pid.h"
 #include "time_util.h"
 #include "random_util.h"
+#include "daemonize.h"
 
 
 /*
@@ -42,15 +45,10 @@
  */
 struct mosquitto *mosq = NULL;
 struct sanji_userdata *ud = NULL;
-
-/* listened topics */
-char sanji_controller_topic[] = SANJI_CONTROLLER_TOPIC;
-char sanji_register_topic[] = SANJI_REGISTER_TOPIC;
-char sanji_dependency_topic[] = SANJI_RESOURCE_DEPENDENCY_TOPIC;
+struct sanji_config *config = NULL;
 
 static int sanji_run = 1;
 static int sanji_dump = 0;
-static int sanji_retry = 0;
 
 struct resource *sanji_resource = NULL;
 struct component *sanji_component = NULL;
@@ -66,7 +64,6 @@ void sanji_signal_quit(int s)
 {
 	DEBUG_PRINT("SIGNAL: get quit signal.");
 	sanji_run = 0;
-	sanji_retry = 0;
 }
 
 void sanji_signal_dump(int s)
@@ -82,52 +79,285 @@ void sanji_signal_dump(int s)
  */
 void sanji_print_usage(void)
 {
-	int major, minor, revision;
-
-	mosquitto_lib_version(&major, &minor, &revision);
-	printf("sanji-controller version %s.\n", SANJI_VERSION);
-	printf("Usage: sanji-controller [-c] [-h host] [-k keepalive] [-p port] [-q qos] [-R] [-v] -t topic ...\n");
-	printf("                        [-i id]\n");
-	printf("                        [-u username [-P password]]\n");
-	printf("                        [--will-topic [--will-payload payload] [--will-qos qos] [--will-retain]]\n");
-	printf("       sanji-controller --help\n\n");
-	printf(" -c : disable 'clean session' (store subscription and pending messages when client disconnects).\n");
-	printf(" -d : enable debug messages.\n");
-	printf(" -h : mqtt host to connect to. Defaults to localhost.\n");
-	printf(" -i : id to use for mosquitto client.\n");
-	printf(" -k : keep alive in seconds for this client. Defaults to 60.\n");
-	printf(" -p : network port to connect to. Defaults to 1883.\n");
-	printf(" -q : quality of service level to use for the subscription. Defaults to 0.\n");
-	printf(" -R : do not print stale messages (those with retain set).\n");
-	printf(" -t : mqtt topic to subscribe to. May be repeated multiple times.\n");
+	printf("sanji_controller version %s.\n", SANJI_VERSION);
+	printf("Usage: sanji_controller [-H host] [-p port] [-r retry] ...\n");
+	printf("                        [-k keepalive] [-C] [-q sub_qos] [-Q pub_qos]\n");
+	printf("                        [-u username] [-P password]\n");
+	printf("                        [-i refresh_interval]\n");
+	printf("                        [-c config_file] [-f] [-d]\n");
+	printf("       sanji_controller [-h]\n\n");
+	printf(" -H : mqtt host to connect to. Defaults to '%s'.\n", SANJI_DEFAULT_HOST);
+	printf(" -p : network port to connect to. Defaults to %d.\n", SANJI_DEFAULT_PORT);
+	printf(" -r : retry times to mqtt broker. Negative number for try-forever. Defaults to %d.\n", SANJI_DEFAULT_RETRY);
+	printf(" -k : keep alive in seconds to mqtt broker. Defaults to %d.\n", SANJI_DEFAULT_KEEPALIVE);
+	printf(" -C : disable 'clean session'.\n");
+	printf(" -q : quality of service level to use for the subscription. Defaults to %d.\n", SANJI_DEFAULT_SUB_QOS);
+	printf(" -Q : quality of service level to use for the publication. Defaults to %d.\n", SANJI_DEFAULT_PUB_QOS);
 	printf(" -u : provide a username (requires MQTT 3.1 broker)\n");
-	printf(" -v : print published messages verbosely.\n");
 	printf(" -P : provide a password (requires MQTT 3.1 broker)\n");
-	printf(" --help : display this message.\n");
-	printf(" --will-payload : payload for the client Will, which is sent by the broker in case of\n");
-	printf("                  unexpected disconnection. If not given and will-topic is set, a zero\n");
-	printf("                  length message will be sent.\n");
-	printf(" --will-qos : QoS level for the client Will.\n");
-	printf(" --will-retain : if given, make the client Will retained.\n");
-	printf(" --will-topic : the topic on which to publish the client Will.\n");
+	printf(" -i : sanji session refresh interval in ms. Defualts to %d.\n", SANJI_DEFAULT_REFRESH_INTERVAL);
+	printf(" -c : specify the sanji controller config file. Defaults to '%s'\n", SANJI_DEFAULT_CONFIG_FILE);
+	printf(" -f : run in foreground.\n");
+	printf(" -d : enable mosquitto debug messages.\n");
+	printf(" -h : display this message.\n");
 }
 
-void sanji_dump_info()
+int sanji_get_cmdline_options(int argc, char *argv[], struct sanji_config *config)
 {
-	if (sanji_dump) {
-		fprintf(stderr, "SANJI: dump component:\n");
-		component_display(sanji_component);
-		fprintf(stderr, "SANJI: dump resource:\n");
-		resource_display(sanji_resource);
-		fprintf(stderr, "SANJI: dump session:\n");
-		session_display(sanji_session);
+	int c;
 
-		sanji_dump = 0;
+	while ((c = getopt(argc, argv, ":H:p:r:k:Cq:Q:u:P:i:c:fdh")) != -1) {
+		switch (c) {
+		case 'H':
+			if (strlen(optarg) >= SANJI_IP_LEN) {
+				fprintf(stderr, "ERROR: max length of ip is %d.\n", SANJI_IP_LEN);
+				return 1;
+			} else {
+				memset(config->host, '\0', SANJI_IP_LEN);
+				strcpy(config->host, optarg);
+			}
+			break;
+		case 'p':
+			config->port = atoi(optarg);
+			break;
+		case 'r':
+			config->retry = atoi(optarg);
+			break;
+		case 'k':
+			config->keepalive = atoi(optarg);
+			break;
+		case 'C':
+			config->clean_session = false;
+			break;
+		case 'q':
+			config->sub_qos = atoi(optarg);
+			break;
+		case 'Q':
+			config->pub_qos = atoi(optarg);
+			break;
+		case 'u':
+			config->username = calloc(strlen(optarg) + 1, sizeof(char));
+			strcpy(config->username, optarg);
+			break;
+		case 'P':
+			config->password = calloc(strlen(optarg) + 1, sizeof(char));
+			strcpy(config->password, optarg);
+			break;
+		case 'i':
+			config->refresh_interval = atoi(optarg);
+			break;
+		case 'c':
+			config->config_file = realloc(config->config_file, (strlen(optarg) + 1) * sizeof(char));
+			memset(config->config_file, '\0', (strlen(optarg) + 1) * sizeof(char));
+			strcpy(config->config_file, optarg);
+			break;
+		case 'f':
+			config->foreground = true;
+			break;
+		case 'd':
+			config->mosq_debug = true;
+			break;
+		case 'h':
+			return 1;
+		case ':':
+		case '?':
+		default:
+			fprintf(stderr, "ERROR: incorrect options.\n");
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
+int sanji_load_config_file(struct sanji_config *config)
+{
+	ini_t *ini;
+	char value[SANJI_INI_VALUE_LEN];
+
+	ini = ini_init(config->config_file);
+	if (!ini) return 1;
+
+#if (defined DEBUG) || (defined VERBOSE)
+	fprintf(stderr, "SANJI: dump ini file:\n");
+	ini_print(ini);
+#endif
+
+	if (!ini_findkey(ini, SANJI_INI_SECTION_GLOBAL, SANJI_INI_KEY_HOST, value, SANJI_INI_VALUE_LEN)) {
+		if (strlen(value) >= SANJI_IP_LEN) {
+			fprintf(stderr, "ERROR: max length of ip is %d.\n", SANJI_IP_LEN);
+		} else {
+			memset(config->host, '\0', SANJI_IP_LEN);
+			strncpy(config->host, value, SANJI_IP_LEN - 1);
+		}
+	}
+	if (!ini_findkey(ini, SANJI_INI_SECTION_GLOBAL, SANJI_INI_KEY_PORT, value, SANJI_INI_VALUE_LEN)) {
+		config->port = atoi(value);
+	}
+	if (!ini_findkey(ini, SANJI_INI_SECTION_GLOBAL, SANJI_INI_KEY_RETRY, value, SANJI_INI_VALUE_LEN)) {
+		config->retry = atoi(value);
+	}
+	if (!ini_findkey(ini, SANJI_INI_SECTION_GLOBAL, SANJI_INI_KEY_KEEPALIVE, value, SANJI_INI_VALUE_LEN)) {
+		config->keepalive = atoi(value);
+	}
+	if (!ini_findkey(ini, SANJI_INI_SECTION_GLOBAL, SANJI_INI_KEY_CLEAN_SESSION, value, SANJI_INI_VALUE_LEN)) {
+		config->clean_session = strcmp(value, "true") ? false : true;
+	}
+	if (!ini_findkey(ini, SANJI_INI_SECTION_GLOBAL, SANJI_INI_KEY_SUB_QOS, value, SANJI_INI_VALUE_LEN)) {
+		config->sub_qos = atoi(value);
+	}
+	if (!ini_findkey(ini, SANJI_INI_SECTION_GLOBAL, SANJI_INI_KEY_PUB_QOS, value, SANJI_INI_VALUE_LEN)) {
+		config->pub_qos = atoi(value);
+	}
+	if (!ini_findkey(ini, SANJI_INI_SECTION_GLOBAL, SANJI_INI_KEY_USERNAME, value, SANJI_INI_VALUE_LEN)) {
+		if (strlen(value) > 0) {
+			config->username = calloc(strlen(value) + 1, sizeof(char));
+			strcpy(config->username, value);
+		}
+	}
+	if (!ini_findkey(ini, SANJI_INI_SECTION_GLOBAL, SANJI_INI_KEY_PASSWORD, value, SANJI_INI_VALUE_LEN)) {
+		if (strlen(value) > 0) {
+			config->password = calloc(strlen(value) + 1, sizeof(char));
+			strcpy(config->password, value);
+		}
+	}
+	if (!ini_findkey(ini, SANJI_INI_SECTION_GLOBAL, SANJI_INI_KEY_REFRESH_INTERVAL, value, SANJI_INI_VALUE_LEN)) {
+		config->refresh_interval = atoi(value);
+	}
+	if (!ini_findkey(ini, SANJI_INI_SECTION_GLOBAL, SANJI_INI_KEY_MOSQ_DEBUG, value, SANJI_INI_VALUE_LEN)) {
+		config->mosq_debug = strcmp(value, "true") ? false : true;
+	}
+
+	ini_release(ini);
+
+	return 0;
+}
+
+struct sanji_config *sanji_config_init()
+{
+	struct sanji_config *config;
+
+	config = calloc(1, sizeof(struct sanji_config));
+	if (!config) {
+		fprintf(stderr, "ERROR: allocate memory failed.\n");
+		return NULL;
+	}
+
+	/* set connect options */
+	strcpy(config->host, SANJI_DEFAULT_HOST);
+	config->port = SANJI_DEFAULT_PORT;
+	config->retry = SANJI_DEFAULT_RETRY;
+	/* set mosquitto options */
+	config->keepalive = SANJI_DEFAULT_KEEPALIVE;
+	config->clean_session = true;
+	config->sub_qos = SANJI_DEFAULT_SUB_QOS;
+	config->pub_qos = SANJI_DEFAULT_PUB_QOS;
+	/* set controller options */
+	config->refresh_interval = SANJI_DEFAULT_REFRESH_INTERVAL;
+	/* set misc options */
+	config->config_file = calloc(strlen(SANJI_DEFAULT_CONFIG_FILE) + 1, sizeof(char));
+	strcpy(config->config_file, SANJI_DEFAULT_CONFIG_FILE);
+	config->foreground = false;
+	config->mosq_debug = false;
+
+	return config;
+}
+
+void sanji_config_dump(struct sanji_config *config)
+{
+	fprintf(stderr, "SANJI: dump config:\n");
+	/* connect */
+	fprintf(stderr, "\thost = '%s'\n", config->host);
+	fprintf(stderr, "\tport = %d\n", config->port);
+	fprintf(stderr, "\tretry = %d\n", config->retry);
+	/* mosquitto */
+	fprintf(stderr, "\tkeepalive = %d\n", config->keepalive);
+	fprintf(stderr, "\tclean_session = %s\n", config->clean_session ? "true" : "false");
+	fprintf(stderr, "\tsub_qos = %d\n", config->sub_qos);
+	fprintf(stderr, "\tpub_qos = %d\n", config->pub_qos);
+	fprintf(stderr, "\tusername = %s\n", config->username ? config->username : "");
+	fprintf(stderr, "\tpassword = %s\n", config->password ? config->password : "");
+	/* controller */
+	fprintf(stderr, "\trefresh_interval = %d\n", config->refresh_interval);
+	/* misc */
+	fprintf(stderr, "\tconfig_file = '%s'\n", config->config_file);
+	fprintf(stderr, "\tforeground = %s\n", config->foreground ? "true" : "false");
+	fprintf(stderr, "\tmosq_debug = %s\n", config->mosq_debug ? "true" : "false");
+}
+
+int sanji_validate_configs(struct sanji_config *config)
+{
+	if (config->port < 1 || config->port > 65535) {
+		fprintf(stderr, "ERROR: Invalid port given: %d\n", config->port);
+		return 1;
+	}
+	if (config->retry > 65535) {
+		fprintf(stderr, "ERROR: Invalid retry given: %d\n", config->retry);
+		return 1;
+	}
+	if (config->keepalive > 65535) {
+		fprintf(stderr, "ERROR: Invalid keepalive given: %d\n", config->keepalive);
+		return 1;
+	}
+	if (config->sub_qos < 0 || config->sub_qos > 2) {
+		fprintf(stderr, "ERROR: Invalid QoS given: %d\n", config->sub_qos);
+		return 1;
+	}
+	if (config->pub_qos < 0 || config->pub_qos > 2) {
+		fprintf(stderr, "ERROR: Invalid QoS given: %d\n", config->pub_qos);
+		return 1;
+	}
+	if (config->refresh_interval < 0 || config->refresh_interval > 65535) {
+		fprintf(stderr, "ERROR: Invalid refresh_interval given: %d\n", config->refresh_interval);
+		return 1;
+	}
+	if (config->password && !config->username) {
+		fprintf(stderr, "WARNING: Not using password since username not set.\n");
+	}
+
+	return 0;
+}
+
+void sanji_config_free(struct sanji_config *config)
+{
+	if (config) {
+		if (config->username) free(config->username);
+		if (config->password) free(config->password);
+		if (config->config_file) free(config->config_file);
+		free(config);
 	}
 }
 
-void sanji_userdata_init(struct sanji_userdata *ud)
+struct sanji_userdata *sanji_userdata_init()
 {
+	struct sanji_userdata *ud;
+
+	ud = calloc(1, sizeof(struct sanji_userdata));
+	if (!ud) {
+		fprintf(stderr, "ERROR: allocate memory failed.\n");
+		return NULL;
+	}
+
+	/* set client id */
+	sprintf(ud->client_id, "sanji_controller");
+	/* set topic to be listened */
+	ud->topic_count++;
+	ud->topics = realloc(ud->topics, ud->topic_count * sizeof(char *));
+	ud->topics[ud->topic_count - 1] = SANJI_CONTROLLER_TOPIC;
+	ud->topic_count++;
+	ud->topics = realloc(ud->topics, ud->topic_count * sizeof(char *));
+	ud->topics[ud->topic_count - 1] = SANJI_REGISTER_TOPIC;
+	ud->topic_count++;
+	ud->topics = realloc(ud->topics, ud->topic_count * sizeof(char *));
+	ud->topics[ud->topic_count - 1] = SANJI_RESOURCE_DEPENDENCY_TOPIC;
+	/* allocate topic mid */
+	ud->topic_mids = (int *)malloc(ud->topic_count * sizeof(int));
+	/* set qos of subscribe */
+	ud->sub_qos = config->sub_qos;
+	/* set qos of publish */
+	ud->pub_qos = config->pub_qos;
+
+	return ud;
 }
 
 void sanji_userdata_free(struct sanji_userdata *ud)
@@ -139,6 +369,15 @@ void sanji_userdata_free(struct sanji_userdata *ud)
 	}
 }
 
+void sanji_dump_info()
+{
+	fprintf(stderr, "SANJI: dump component:\n");
+	component_display(sanji_component);
+	fprintf(stderr, "SANJI: dump resource:\n");
+	resource_display(sanji_resource);
+	fprintf(stderr, "SANJI: dump session:\n");
+	session_display(sanji_session);
+}
 
 int _sanji_response(char *tunnel, char *context)
 {
@@ -154,7 +393,7 @@ int _sanji_response(char *tunnel, char *context)
 	DEBUG_PRINT("%s", context);
 #endif
 
-	mosquitto_publish(mosq, &ud->mid_sent, tunnel, context_len, context, ud->qos_sent, ud->retain_sent);
+	mosquitto_publish(mosq, &ud->mid_sent, tunnel, context_len, context, ud->pub_qos, ud->retain_sent);
 
 	return 0;
 }
@@ -281,7 +520,7 @@ int register_error_response(
 		char *message,
 		char *log)
 {
-	sanji_error_response(sanji_controller_topic, id, method, topic, SANJI_CONTROLLER_NAME, status_code, message, log);
+	sanji_error_response(SANJI_CONTROLLER_TOPIC, id, method, topic, SANJI_CONTROLLER_NAME, status_code, message, log);
 
 	return 0;
 }
@@ -346,7 +585,7 @@ int register_response(
 	json_decref(response_root);
 
 	/* publish response */
-	_sanji_response(sanji_controller_topic, context);
+	_sanji_response(SANJI_CONTROLLER_TOPIC, context);
 
 	free(context);
 
@@ -758,7 +997,7 @@ int dependency_error_response(
 		char *message,
 		char *log)
 {
-	sanji_error_response(sanji_controller_topic, id, method, topic, SANJI_CONTROLLER_NAME, status_code, message, log);
+	sanji_error_response(SANJI_CONTROLLER_TOPIC, id, method, topic, SANJI_CONTROLLER_NAME, status_code, message, log);
 
 	return 0;
 }
@@ -838,7 +1077,7 @@ int dependency_response(
 	json_decref(response_root);
 
 	/* publish response */
-	_sanji_response(sanji_controller_topic, context);
+	_sanji_response(SANJI_CONTROLLER_TOPIC, context);
 
 	free(context);
 
@@ -1823,7 +2062,7 @@ void sanji_message_callback(struct mosquitto *mosq, void *obj, const struct mosq
 	assert(obj);
 	ud = (struct sanji_userdata *)obj;
 
-	if (message->retain && ud->no_retain) return;
+	if (message->retain) return;
 
 	if (message->payloadlen) {
 		DEBUG_PRINT("========================================================");
@@ -1831,7 +2070,6 @@ void sanji_message_callback(struct mosquitto *mosq, void *obj, const struct mosq
 		sanji_dispatch_context(message->topic, message->payload, message->payloadlen);
 	}
 }
-
 
 void sanji_subscribe_callback(struct mosquitto *mosq, void *obj, int mid, int qos_count, const int *granted_qos)
 {
@@ -1867,7 +2105,7 @@ void sanji_connect_callback(struct mosquitto *mosq, void *obj, int result)
 
 	if (!result) {
 		for (i = 0; i < ud->topic_count; i++) {
-			mosquitto_subscribe(mosq, &ud->topic_mids[i], ud->topics[i], ud->topic_qos);
+			mosquitto_subscribe(mosq, &ud->topic_mids[i], ud->topics[i], ud->sub_qos);
 		}
 	} else {
 		fprintf(stderr, "%s\n", mosquitto_connack_string(result));
@@ -1909,303 +2147,84 @@ void sanji_log_callback(struct mosquitto *mosq, void *obj, int level, const char
  */
 int main(int argc, char *argv[])
 {
-	/* sanji controller variable */
-	bool clean_session = true;
-	bool debug = false;
-	/* client id */
-	char hostname[SANJI_HOSTNAME_BUFSIZE];
-	/* connect */
-	char host[SANJI_IP_LEN] = SANJI_DEFAULT_IP;
-	int port = SANJI_DEFAULT_PORT;
-	int keepalive = SANJI_DEFAULT_KEEPALIVE;
-	/* will information */
-	char *will_topic = NULL;
-	long will_payloadlen = 0;
-	char *will_payload = NULL;
-	int will_qos = 0;
-	bool will_retain = false;
-	/* temp variable */
-	int i;
 	int rc;
 
-	sanji_retry = SANJI_RETRY_TIMES;
-
-	/* initialized program and user data structure */
-	ud = malloc(sizeof(struct sanji_userdata));
-	memset(ud, 0, sizeof(struct sanji_userdata));
-	/* set client id */
-	memset(ud->client_id, '\0', sizeof(ud->client_id));
-	sprintf(ud->client_id, "sanji_controller");
-	/* set topic to be listened */
-	ud->topic_count++;
-	ud->topics = realloc(ud->topics, ud->topic_count * sizeof(char *));
-	ud->topics[ud->topic_count-1] = sanji_controller_topic;
-	ud->topic_count++;
-	ud->topics = realloc(ud->topics, ud->topic_count * sizeof(char *));
-	ud->topics[ud->topic_count-1] = sanji_register_topic;
-	ud->topic_count++;
-	ud->topics = realloc(ud->topics, ud->topic_count * sizeof(char *));
-	ud->topics[ud->topic_count-1] = sanji_dependency_topic;
-	/* allocate topic mid */
-	ud->topic_mids = (int *)malloc(ud->topic_count * sizeof(int));
-	/* set qos of subscribe */
-	ud->topic_qos = 2;
-	/* set qos of publish */
-	ud->qos_sent = 1;
-
-	/* TODO: use getopt */
-	/* get option */
-	for(i=1; i<argc; i++){
-		if(!strcmp(argv[i], "-p") || !strcmp(argv[i], "--port")){
-			if(i==argc-1){
-				fprintf(stderr, "ERROR: -p argument given but no port specified.\n\n");
-				sanji_print_usage();
-				sanji_userdata_free(ud);
-				return 1;
-			}else{
-				port = atoi(argv[i+1]);
-				if(port<1 || port>65535){
-					fprintf(stderr, "ERROR: Invalid port given: %d\n", port);
-					sanji_print_usage();
-					sanji_userdata_free(ud);
-					return 1;
-				}
-			}
-			i++;
-		}else if(!strcmp(argv[i], "-c") || !strcmp(argv[i], "--disable-clean-session")){
-			clean_session = false;
-		}else if(!strcmp(argv[i], "-d") || !strcmp(argv[i], "--debug")){
-			debug = true;
-		}else if(!strcmp(argv[i], "--help")){
-			sanji_print_usage();
-			sanji_userdata_free(ud);
-			return 0;
-		}else if(!strcmp(argv[i], "-h") || !strcmp(argv[i], "--host")){
-			if(i==argc-1){
-				fprintf(stderr, "ERROR: -h argument given but no host specified.\n\n");
-				sanji_print_usage();
-				sanji_userdata_free(ud);
-				return 1;
-			}else{
-				if (strlen(argv[i+1]) >= SANJI_IP_LEN) {
-					fprintf(stderr, "ERROR: max length of ip is %d.\n\n", SANJI_IP_LEN);
-					sanji_print_usage();
-				} else {
-					memset(host, '\0', sizeof(host));
-					strcpy(host, argv[i+1]);
-				}
-			}
-			i++;
-		}else if(!strcmp(argv[i], "-i") || !strcmp(argv[i], "--id")){
-			if(i==argc-1){
-				fprintf(stderr, "ERROR: -i argument given but no id specified.\n\n");
-				sanji_print_usage();
-				sanji_userdata_free(ud);
-				return 1;
-			}else{
-				if (strlen(argv[i+1]) >= MOSQ_MQTT_ID_MAX_LENGTH) {
-					fprintf(stderr, "ERROR: max length of client id is %d.\n\n", MOSQ_MQTT_ID_MAX_LENGTH);
-					sanji_print_usage();
-				} else {
-					strcpy(ud->client_id, argv[i+1]);
-				}
-			}
-			i++;
-		}else if(!strcmp(argv[i], "-k") || !strcmp(argv[i], "--keepalive")){
-			if(i==argc-1){
-				fprintf(stderr, "ERROR: -k argument given but no keepalive specified.\n\n");
-				sanji_print_usage();
-				sanji_userdata_free(ud);
-				return 1;
-			}else{
-				keepalive = atoi(argv[i+1]);
-				if(keepalive>65535){
-					fprintf(stderr, "ERROR: Invalid keepalive given: %d\n", keepalive);
-					sanji_print_usage();
-					sanji_userdata_free(ud);
-					return 1;
-				}
-			}
-			i++;
-		}else if(!strcmp(argv[i], "-q") || !strcmp(argv[i], "--qos")){
-			if(i==argc-1){
-				fprintf(stderr, "ERROR: -q argument given but no QoS specified.\n\n");
-				sanji_print_usage();
-				sanji_userdata_free(ud);
-				return 1;
-			}else{
-				ud->topic_qos = atoi(argv[i+1]);
-				if(ud->topic_qos<0 || ud->topic_qos>2){
-					fprintf(stderr, "ERROR: Invalid QoS given: %d\n", ud->topic_qos);
-					sanji_print_usage();
-					sanji_userdata_free(ud);
-					return 1;
-				}
-			}
-			i++;
-		}else if(!strcmp(argv[i], "-R")){
-			ud->no_retain = true;
-		}else if(!strcmp(argv[i], "-t") || !strcmp(argv[i], "--topic")){
-			if(i==argc-1){
-				fprintf(stderr, "ERROR: -t argument given but no topic specified.\n\n");
-				sanji_print_usage();
-				sanji_userdata_free(ud);
-				return 1;
-			}else{
-				/* reset topic */
-				if (ud->topics) {
-					ud->topic_count = 0;
-					free(ud->topics);
-				}
-				ud->topic_count++;
-				ud->topics = realloc(ud->topics, ud->topic_count*sizeof(char *));
-				ud->topics[ud->topic_count-1] = argv[i+1];
-			}
-			i++;
-		}else if(!strcmp(argv[i], "-u") || !strcmp(argv[i], "--username")){
-			if(i==argc-1){
-				fprintf(stderr, "ERROR: -u argument given but no username specified.\n\n");
-				sanji_print_usage();
-				sanji_userdata_free(ud);
-				return 1;
-			}else{
-				ud->username = argv[i+1];
-			}
-			i++;
-		}else if(!strcmp(argv[i], "-v") || !strcmp(argv[i], "--verbose")){
-			ud->verbose = 1;
-		}else if(!strcmp(argv[i], "-P") || !strcmp(argv[i], "--pw")){
-			if(i==argc-1){
-				fprintf(stderr, "ERROR: -P argument given but no password specified.\n\n");
-				sanji_print_usage();
-				sanji_userdata_free(ud);
-				return 1;
-			}else{
-				ud->password = argv[i+1];
-			}
-			i++;
-		}else if(!strcmp(argv[i], "--will-payload")){
-			if(i==argc-1){
-				fprintf(stderr, "ERROR: --will-payload argument given but no will payload specified.\n\n");
-				sanji_print_usage();
-				sanji_userdata_free(ud);
-				return 1;
-			}else{
-				will_payload = argv[i+1];
-				will_payloadlen = strlen(will_payload);
-			}
-			i++;
-		}else if(!strcmp(argv[i], "--will-qos")){
-			if(i==argc-1){
-				fprintf(stderr, "ERROR: --will-qos argument given but no will QoS specified.\n\n");
-				sanji_print_usage();
-				sanji_userdata_free(ud);
-				return 1;
-			}else{
-				will_qos = atoi(argv[i+1]);
-				if(will_qos < 0 || will_qos > 2){
-					fprintf(stderr, "ERROR: Invalid will QoS %d.\n\n", will_qos);
-					sanji_userdata_free(ud);
-					return 1;
-				}
-			}
-			i++;
-		}else if(!strcmp(argv[i], "--will-retain")){
-			will_retain = true;
-		}else if(!strcmp(argv[i], "--will-topic")){
-			if(i==argc-1){
-				fprintf(stderr, "ERROR: --will-topic argument given but no will topic specified.\n\n");
-				sanji_print_usage();
-				sanji_userdata_free(ud);
-				return 1;
-			}else{
-				will_topic = argv[i+1];
-			}
-			i++;
-		}else{
-			fprintf(stderr, "ERROR: Unknown option '%s'.\n",argv[i]);
-			sanji_print_usage();
-			sanji_userdata_free(ud);
-			return 1;
-		}
-	}
-
-	/* validate necessary configuration */
-	if((clean_session == false) && (strlen(ud->client_id) == 0)){
-		fprintf(stderr, "ERROR: You must provide a client id if you are using the -c option.\n");
-		sanji_userdata_free(ud);
+	/* init configs */
+	config = sanji_config_init();
+	if (!config) {
+		fprintf(stderr, "ERROR: Init sanji config failed.\n");
 		return 1;
 	}
-	if(ud->topic_count == 0){
-		fprintf(stderr, "ERROR: You must specify a topic to subscribe to.\n");
+
+	/* get cmdline options to configs */
+	if (sanji_get_cmdline_options(argc, argv, config)) {
 		sanji_print_usage();
-		sanji_userdata_free(ud);
+		sanji_config_free(config);
 		return 1;
-	}
-	if(will_payload && !will_topic){
-		fprintf(stderr, "ERROR: Will payload given, but no will topic given.\n");
-		sanji_print_usage();
-		sanji_userdata_free(ud);
-		return 1;
-	}
-	if(will_retain && !will_topic){
-		fprintf(stderr, "ERROR: Will retain given, but no will topic given.\n");
-		sanji_print_usage();
-		sanji_userdata_free(ud);
-		return 1;
-	}
-	if(ud->password && !ud->username){
-		fprintf(stderr, "Warning: Not using password since username not set.\n");
 	}
 
-	/* TODO: support config file, add sanji_controller_config structure */
+	/* load config file */
+	if (sanji_load_config_file(config)) {
+		fprintf(stderr, "WARNING: Load config file '%s' failed\n", config->config_file);
+	}
+
+	/* validate configs */
+	if (sanji_validate_configs(config)) {
+		sanji_config_free(config);
+		return 1;
+	}
+
+	/* dump configs */
+#if (defined DEBUG) || (defined VERBOSE)
+	sanji_config_dump(config);
+#endif
+
+	/* init userdata */
+	ud = sanji_userdata_init();
+	if (!ud) {
+		fprintf(stderr, "ERROR: Init sanji user data failed.\n");
+		sanji_config_free(config);
+		return 1;
+	}
 
 	/* setup signal handler */
 	signal(SIGINT, sanji_signal_quit);
 	signal(SIGTERM, sanji_signal_quit);
 	signal(SIGUSR1, sanji_signal_dump);
 
-	/* TODO: daemonlize */
+	/* daemonize */
+	if (!config->foreground) {
+		if (daemonize_process(1)) {
+			fprintf(stderr, "ERROR: Failed to deamonize.\n");
+			sanji_userdata_free(ud);
+			sanji_config_free(config);
+			return 1;
+		}
+	}
 
 	/* init mosquitto library */
 	mosquitto_lib_init();
 
-	/* setup client id */
-	if(strlen(ud->client_id) == 0){
-		memset(hostname, '\0', sizeof(hostname));
-		gethostname(hostname, sizeof(hostname));
-		snprintf(ud->client_id, sizeof(ud->client_id), "mosqsub/%d-%s", getpid(), hostname);
-	}
-	if(strlen(ud->client_id) > MOSQ_MQTT_ID_MAX_LENGTH){
-		/* Enforce maximum client id length of 23 characters */
-		ud->client_id[MOSQ_MQTT_ID_MAX_LENGTH] = '\0';
-	}
-
-	/* start mosquitto */
-	mosq = mosquitto_new(ud->client_id, clean_session, ud);
-	if(!mosq){
+	/* init mosquitto */
+	mosq = mosquitto_new(ud->client_id, config->clean_session, ud);
+	if (!mosq) {
 		fprintf(stderr, "ERROR: %s\n", strerror(errno));
 		mosquitto_lib_cleanup();
 		sanji_userdata_free(ud);
+		sanji_config_free(config);
 		return 1;
 	}
 
 	/* setup mosquitto */
-	if (debug) {
+	if (config->mosq_debug) {
 		mosquitto_log_callback_set(mosq, sanji_log_callback);
 	}
-	if (will_topic && mosquitto_will_set(mosq, will_topic, will_payloadlen, will_payload, will_qos, will_retain)) {
-		fprintf(stderr, "ERROR: Problem setting will.\n");
-		mosquitto_destroy(mosq);
-		mosquitto_lib_cleanup();
-		sanji_userdata_free(ud);
-		return 1;
-	}
-	if (ud->username && mosquitto_username_pw_set(mosq, ud->username, ud->password)) {
+	if (config->username && mosquitto_username_pw_set(mosq, config->username, config->password)) {
 		fprintf(stderr, "ERROR: Problem setting username and password.\n");
 		mosquitto_destroy(mosq);
 		mosquitto_lib_cleanup();
 		sanji_userdata_free(ud);
+		sanji_config_free(config);
 		return 1;
 	}
 	mosquitto_connect_callback_set(mosq, sanji_connect_callback);
@@ -2214,23 +2233,28 @@ int main(int argc, char *argv[])
 
 	/* connect mosquitto */
 	do {
-		rc = mosquitto_connect(mosq, host, port, keepalive);
+		rc = mosquitto_connect(mosq, config->host, config->port, config->keepalive);
 		if (rc) {
-			if (rc == MOSQ_ERR_ERRNO) {
-				fprintf(stderr, "ERROR: %s\n", strerror(errno));
-			} else {
+			if (rc == MOSQ_ERR_INVAL) {
 				fprintf(stderr, "ERROR: Unable to connect (%d: %s).\n", rc, mosquitto_strerror(rc));
+				sanji_run = 0;
+			} else {
+				fprintf(stderr, "ERROR: %s\n", strerror(errno));
+				if (errno == EINVAL) sanji_run = 0;
 			}
-			if (sanji_retry > 0) sanji_retry--;
+
+			if (config->retry > 0) config->retry--;
 			sleep(1);
+
 		} else {
 			break;
 		}
-	} while (sanji_retry > 0 || sanji_retry < 0);
+	} while (sanji_run && (config->retry > 0 || config->retry < 0));
 	if (rc) {
 		mosquitto_destroy(mosq);
 		mosquitto_lib_cleanup();
 		sanji_userdata_free(ud);
+		sanji_config_free(config);
 		return rc;
 	}
 
@@ -2239,11 +2263,16 @@ int main(int argc, char *argv[])
 	 * it use select() to call back the callback-function which defined above.
 	 */
 	while (sanji_run) {
-		rc = mosquitto_loop(mosq, SANJI_REFRESH_INTERVAL, 1);
+		rc = mosquitto_loop(mosq, config->refresh_interval, 1);
 
 		/*  refresh ttl for each session */
 		sanji_refresh_session();
-		sanji_dump_info();
+
+		/* dump component/resource/session if we got SIGUSR1 */
+		if (sanji_dump) {
+			sanji_dump_info();
+			sanji_dump = 0;
+		}
 
 		if (sanji_run && rc) {
 			fprintf(stderr, "SANJI: reconnect to server\n");
@@ -2255,8 +2284,9 @@ int main(int argc, char *argv[])
 	/* clear mosquitto */
 	mosquitto_destroy(mosq);
 	mosquitto_lib_cleanup();
-	/* clear sanji user data */
+	/* clear sanji */
 	sanji_userdata_free(ud);
+	sanji_config_free(config);
 	/* clear sanji controller objects */
 	if (sanji_resource) resource_free(sanji_resource);
 	if (sanji_component) component_free(sanji_component);

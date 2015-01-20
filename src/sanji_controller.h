@@ -13,8 +13,10 @@ extern "C" {
 #define SANJI_VERSION "1.6.0"
 #define SANJI_HOSTNAME_BUFSIZE 256
 #define SANJI_IP_LEN 16
-#define SANJI_ID_LEN (MOSQ_MQTT_ID_MAX_LENGTH + 32)
+#define SANJI_ID_LEN (MOSQ_MQTT_ID_MAX_LENGTH + 1)
 #define SANJI_MESSAGE_LEN 256
+#define SANJI_MAX_CONTEXT_LEN (1024 * 1024)
+#define SANJI_MAX_PATH MAX_PATH
 
 /* controller topics */
 #define SANJI_CONTROLLER_NAME "controller"
@@ -27,13 +29,28 @@ extern "C" {
 #define SANJI_RESOURCE_DEPENDENCY_TOPIC "/controller/resource/dependency"
 #define SANJI_RESOURCE_DEPENDENCY_TOPIC_LEN 31
 
-/* sanji configurations */
-#define SANJI_REFRESH_INTERVAL 1000
+/* sanji configs */
+#define SANJI_INI_SECTION_GLOBAL "global"
+#define SANJI_INI_KEY_HOST "host"
+#define SANJI_INI_KEY_PORT "port"
+#define SANJI_INI_KEY_RETRY "retry"
+#define SANJI_INI_KEY_KEEPALIVE "keepalive"
+#define SANJI_INI_KEY_CLEAN_SESSION "clean_session"
+#define SANJI_INI_KEY_SUB_QOS "sub_qos"
+#define SANJI_INI_KEY_PUB_QOS "pub_qos"
+#define SANJI_INI_KEY_USERNAME "username"
+#define SANJI_INI_KEY_PASSWORD "password"
+#define SANJI_INI_KEY_REFRESH_INTERVAL "refresh_interval"
+#define SANJI_INI_KEY_MOSQ_DEBUG "mosq_debug"
+#define SANJI_INI_VALUE_LEN 128
+#define SANJI_DEFAULT_HOST "127.0.0.1"
 #define SANJI_DEFAULT_PORT 1883
-#define SANJI_DEFAULT_IP "127.0.0.1"
 #define SANJI_DEFAULT_KEEPALIVE 600
-#define SANJI_MAX_CONTEXT_LEN (1024 * 1024)
-#define SANJI_RETRY_TIMES 10
+#define SANJI_DEFAULT_RETRY (-1)
+#define SANJI_DEFAULT_SUB_QOS 2
+#define SANJI_DEFAULT_PUB_QOS 1
+#define SANJI_DEFAULT_REFRESH_INTERVAL 1000
+#define SANJI_DEFAULT_CONFIG_FILE "/etc/sanji_controller.conf"
 
 
 /*
@@ -51,15 +68,34 @@ struct sanji_userdata {
 	char client_id[SANJI_ID_LEN];
 	char **topics;
 	int topic_count;
-	int topic_qos;
+	int sub_qos;
+	int pub_qos;
 	int *topic_mids;
-	char *username;
-	char *password;
-	int verbose;
-	bool no_retain;
-	int qos_sent;
 	int retain_sent;
 	int mid_sent;
+};
+
+/*
+ * This struct is used to store all configuration options
+ */
+struct sanji_config {
+	/* connect */
+	char host[SANJI_IP_LEN];
+	int port;
+	int retry;
+	/* mosquitto */
+	int keepalive;
+	bool clean_session;
+	int sub_qos;
+	int pub_qos;
+	char *username;
+	char *password;
+	/* sanji controller */
+	int refresh_interval;
+	/* misc */
+	char *config_file;
+	bool foreground;
+	bool mosq_debug;
 };
 
 
