@@ -1,0 +1,18 @@
+Source: sanji-controller
+Priority: extra
+Maintainer: Simon Wang <Simon.Wang@moxa.com>
+Build-Depends: debhelper (>= 8.0.0)
+Standards-Version: 3.9.3
+Section: libs
+Homepage: http://www.moxa.com
+#Vcs-Git: git@github.com:Sanji-IO/sanji-controller.git
+#Vcs-Browser: 
+X-Python-Version: >= 2.5
+
+Package: sanji-controller
+Section: libs
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Sanji controller is the core role for Sanji framework which 
+ based on mosquitto.
+
