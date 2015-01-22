@@ -4,7 +4,8 @@ SOURCE_DIR = ../src
 CFLAGS = -Wall -I/usr/local/include -I$(SOURCE_DIR)/lib
 LDFLAGS = -L/usr/local/lib -lmosquitto -ljansson
 
-EXEC = sanji_controller
+EXEC = sanji-controller
+CONF = sanji-controller.conf
 SRCS = sanji_controller.c resource.c component.c session.c ini.c
 OBJS = $(SRCS:.c=.o)
 LIBS = libsanjimisc.a
@@ -38,6 +39,14 @@ $(EXEC): $(OBJS)
 %.o: $(SOURCE_DIR)/%.c
 	$(CC) $(CFLAGS) -c $<
 
+install:
+	mkdir -p $(DESTDIR)/usr/bin
+	mkdir -p $(DESTDIR)/etc
+	install $(EXEC) $(DESTDIR)/usr/bin
+	install $(CONF) $(DESTDIR)/etc
+
+distclean: clean
+
 clean: 
 	make -C $(SOURCE_DIR)/lib/build clean
-	-rm -f *.o $(LIBS) sanji_controller sanji_controller_debug sanji_controller_verbose
+	-rm -f *.o $(LIBS) sanji-controller sanji_controller_debug sanji_controller_verbose
