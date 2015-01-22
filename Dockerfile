@@ -17,5 +17,5 @@ RUN apt-get update && apt-get install -y wget && \
     apt-get remove -y build-essential libjansson-dev libmosquitto-dev
 
 
-CMD ./sanji_controller -f \
+CMD ./sanji-controller -f \
     -H $BROKER_PORT_1883_TCP_ADDR -p $BROKER_PORT_1883_TCP_PORT
