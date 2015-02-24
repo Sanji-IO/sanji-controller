@@ -33,7 +33,7 @@ endif
 ifeq ($(ARCH),marvell)
 CROSS = arm-mv5sft-linux-gnueabi-
 CFLAGS = -I/usr/local/arm-mv5sft-linux-gnueabi/include
-LDGLAGS = -L/usr/local/arm-mv5sft-linux-gnueabi/lib
+LDFLAGS = -L/usr/local/arm-mv5sft-linux-gnueabi/lib
 endif
 
 
