@@ -389,7 +389,7 @@ int _sanji_response(char *tunnel, char *context)
 	context_len = strlen(context);
 
 #if (defined DEBUG) || (defined VERBOSE)
-	DEBUG_PRINT("reponse to tunnel(%s)", tunnel);
+	DEBUG_PRINT("response to tunnel(%s)", tunnel);
 	DEBUG_PRINT("%s", context);
 #endif
 
@@ -408,7 +408,7 @@ int sanji_error_response(
 		char *message,
 		char *log)
 {
-	/* reponse context */
+	/* response context */
 	json_t *response_root = NULL;
 	json_t *response_sign = NULL;
 	json_t *data = NULL;
@@ -419,7 +419,7 @@ int sanji_error_response(
 
 	if (!tunnel || (strlen(tunnel) <= 0)) return 1;
 
-	/* create json reponse context */
+	/* create json response context */
 	response_root = json_object();
 	if (!response_root) {
 		DEBUG_PRINT("ERROR: out of memory");
@@ -624,14 +624,14 @@ int register_response(
 		int status_code,
 		char *tunnel)
 {
-	/* reponse context */
+	/* response context */
 	json_t *response_root = NULL;
 	json_t *response_sign = NULL;
 	json_t *data = NULL;
 	char *_method = NULL;
 	char *context = NULL;
 
-	/* create json reponse context */
+	/* create json response context */
 	response_root = json_object();
 	if (!response_root) {
 		DEBUG_PRINT("ERROR: out of memory");
@@ -1110,7 +1110,7 @@ int dependency_response(
 		char *resources,
 		unsigned int resources_count)
 {
-	/* reponse context */
+	/* response context */
 	json_t *response_root = NULL;
 	json_t *response_sign = NULL;
 	json_t *data = NULL;
@@ -1119,7 +1119,7 @@ int dependency_response(
 	char *context = NULL;
 	int i;
 
-	/* create json reponse context */
+	/* create json response context */
 	response_root = json_object();
 	if (!response_root) {
 		DEBUG_PRINT("ERROR: out of memory");
