@@ -700,7 +700,7 @@ int register_create(char *name, char *description, char *role, char *hook, unsig
 
 	/* check whether if one of resources is locked */
 	for (i = 0; i < resources_count; i++) {
-		is_locked += resource_is_locked(sanji_resource, resources + i * COMPONENT_NAME_LEN);
+		is_locked += resource_is_locked(sanji_resource, resources + i * RESOURCE_NAME_LEN);
 	}
 	if (is_locked) {
 		DEBUG_PRINT("ERROR: resoures is locked.");
