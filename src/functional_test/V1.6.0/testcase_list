@@ -57,6 +57,7 @@
 # 507: create and delete with hook mechanism
 # 508: model should be able to listen multi-resources
 # 509: model should be able to listen multi-resources (random register/deregister sequence)
+# 510: long resource and hook name
 
 # 601: test basic CRUD method. Resource dependecy resource only support 'read' method.
 # 602: test resource listened by multi models

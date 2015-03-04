@@ -956,8 +956,8 @@ int register_procedure(
 				hook_count = 1;
 				hook = (char *)malloc(hook_count * sizeof(char) * COMPONENT_NAME_LEN);
 				if (strlen(json_string_value(_hook)) > 0) {
-					strncpy(hook, json_string_value(_hook), COMPONENT_ROLE_LEN);
-					hook[COMPONENT_ROLE_LEN - 1] = '\0';
+					strncpy(hook, json_string_value(_hook), COMPONENT_NAME_LEN);
+					hook[COMPONENT_NAME_LEN - 1] = '\0';
 				} else {
 					DEBUG_PRINT("ERROR: wrong sanji packet, empty 'hook'.");
 					register_error_response(id, method, topic, SESSION_CODE_BAD_REQUEST, "wrong register context", "empty 'hook'");
@@ -1003,8 +1003,8 @@ int register_procedure(
 				for (i = 0; i < resources_count; i++) {
 					tmp = json_array_get(_resources, i);
 					if (tmp && json_is_string(tmp) && (strlen(json_string_value(tmp)) > 0)) {
-						strncpy(resources + (i * COMPONENT_NAME_LEN), json_string_value(tmp), COMPONENT_NAME_LEN);
-						resources[(i + 1) * COMPONENT_NAME_LEN - 1] = '\0';
+						strncpy(resources + (i * RESOURCE_NAME_LEN), json_string_value(tmp), RESOURCE_NAME_LEN);
+						resources[(i + 1) * RESOURCE_NAME_LEN - 1] = '\0';
 					} else {
 						DEBUG_PRINT("ERROR: wrong sanji packet, empty 'resources'.");
 						register_error_response(id, method, topic, SESSION_CODE_BAD_REQUEST, "wrong register context", "empty 'resources'");
@@ -1015,10 +1015,10 @@ int register_procedure(
 				}
 			} else if (json_is_string(_resources)) {
 				resources_count = 1;
-				resources = (char *)malloc(hook_count * sizeof(char) * COMPONENT_NAME_LEN);
+				resources = (char *)malloc(resources_count * sizeof(char) * RESOURCE_NAME_LEN);
 				if (strlen(json_string_value(_resources)) > 0) {
-					strncpy(resources, json_string_value(_resources), COMPONENT_ROLE_LEN);
-					resources[COMPONENT_ROLE_LEN - 1] = '\0';
+					strncpy(resources, json_string_value(_resources), RESOURCE_NAME_LEN);
+					resources[RESOURCE_NAME_LEN - 1] = '\0';
 				} else {
 					DEBUG_PRINT("ERROR: wrong sanji packet, empty 'resources'.");
 					register_error_response(id, method, topic, SESSION_CODE_BAD_REQUEST, "wrong register context", "empty 'resources'");
