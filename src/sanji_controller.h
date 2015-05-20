@@ -10,10 +10,12 @@ extern "C" {
  * DEFINE MACRO
  * ##########################
  */
-#define SANJI_VERSION "1.6.0"
+#define SANJI_VERSION "1.6.1"
 #define SANJI_HOSTNAME_BUFSIZE 256
 #define SANJI_IP_LEN 16
 #define SANJI_ID_LEN (MOSQ_MQTT_ID_MAX_LENGTH + 1)
+#define SANJI_ID_SUFFIX "controller"
+#define SANJI_ID_SUFFIX_LEN 11
 #define SANJI_MESSAGE_LEN 256
 #define SANJI_MAX_CONTEXT_LEN (1024 * 1024)
 #define SANJI_MAX_PATH MAX_PATH
@@ -31,6 +33,9 @@ extern "C" {
 #define SANJI_CONTROLLER_NAME "controller"
 #define SANJI_CONTROLLER_TOPIC "/controller"
 #define SANJI_CONTROLLER_TOPIC_LEN 11
+#define SANJI_TOPIC_MAX_LEN 256
+#define SANJI_LOCAL_ID_LEN MOSQ_MQTT_ID_MAX_LENGTH - SANJI_ID_SUFFIX_LEN
+
 
 /* build-in model topics and resources */
 #define SANJI_REGISTER_NAME "registration"
@@ -83,6 +88,8 @@ extern "C" {
  */
 struct sanji_userdata {
 	char client_id[SANJI_ID_LEN];
+	char local_id[SANJI_LOCAL_ID_LEN];
+	char local_id_topic[SANJI_TOPIC_MAX_LEN];
 	char **topics;
 	int topic_count;
 	int sub_qos;
