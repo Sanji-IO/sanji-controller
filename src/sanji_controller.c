@@ -338,12 +338,30 @@ struct sanji_userdata *sanji_userdata_init()
 		return NULL;
 	}
 
+	/* get local id */
+	char *LOCAL_ID = getenv("LOCAL_ID");
+
+	/* clear local_id_topic */
+	memset(ud->local_id_topic, '\0', SANJI_TOPIC_MAX_LEN);
+
 	/* set client id */
-	sprintf(ud->client_id, "sanji_controller");
+	sprintf(ud->client_id, SANJI_ID_SUFFIX);
+
 	/* set topic to be listened */
 	ud->topic_count++;
 	ud->topics = realloc(ud->topics, ud->topic_count * sizeof(char *));
 	ud->topics[ud->topic_count - 1] = SANJI_CONTROLLER_TOPIC;
+	if (LOCAL_ID != NULL) {
+		
+		/* overwrite client_id */
+		sprintf(ud->client_id, "%s-%s", LOCAL_ID, SANJI_ID_SUFFIX);
+
+		/* set /{local_id}/SANJI_CONTROLLER_TOPIC topic */
+		ud->topic_count++;
+		ud->topics = realloc(ud->topics, ud->topic_count * sizeof(char *));
+		sprintf(ud->local_id_topic, "/%s%s", LOCAL_ID, SANJI_CONTROLLER_TOPIC);
+		ud->topics[ud->topic_count - 1] = ud->local_id_topic;
+	}
 	ud->topic_count++;
 	ud->topics = realloc(ud->topics, ud->topic_count * sizeof(char *));
 	ud->topics[ud->topic_count - 1] = SANJI_REGISTER_TOPIC;
@@ -2082,8 +2100,12 @@ int sanji_parse_context(
 	return SANJI_SUCCESS;
 }
 
-int sanji_dispatch_context(char *topic, char *context, unsigned int context_len)
+int sanji_dispatch_context(void *obj, char *topic, char *context, unsigned int context_len)
 {
+	struct sanji_userdata *ud = NULL;
+	assert(obj);
+	ud = (struct sanji_userdata *)obj;
+
 	/* sanji context content */
 	json_t *root = NULL;
 	unsigned int id = SANJI_HEADER_NO_ID;
@@ -2140,7 +2162,8 @@ int sanji_dispatch_context(char *topic, char *context, unsigned int context_len)
 	 *  2. register procedure (/controller/registration)
 	 *	3. lookup resource dependency procedure (/controller/resource/dependency)
 	 */
-	if (!strcmp(topic, SANJI_CONTROLLER_TOPIC)) {
+	if (!strcmp(topic, SANJI_CONTROLLER_TOPIC) ||
+		(strlen(ud->local_id_topic) > 1 && !strcmp(topic, ud->local_id_topic))) {
 		routing_procedure(root, id, method, resource, tunnel, sign, code, data);
 	} else if (!strcmp(topic, SANJI_REGISTER_TOPIC)) {
 		register_procedure(root, id, method, resource, sign, code, data);
@@ -2197,7 +2220,7 @@ void sanji_message_callback(struct mosquitto *mosq, void *obj, const struct mosq
 				(char *)message->payload);
 
 		/* START POINT */
-		sanji_dispatch_context(message->topic, message->payload, message->payloadlen);
+		sanji_dispatch_context(ud, message->topic, message->payload, message->payloadlen);
 	}
 }
 
