@@ -10,7 +10,7 @@ extern "C" {
  * DEFINE MACRO
  * ##########################
  */
-#define SANJI_VERSION "1.6.1"
+#define SANJI_VERSION "1.6.2"
 #define SANJI_HOSTNAME_BUFSIZE 256
 #define SANJI_IP_LEN 16
 #define SANJI_ID_LEN (MOSQ_MQTT_ID_MAX_LENGTH + 1)
@@ -60,9 +60,11 @@ extern "C" {
 #define SANJI_INI_KEY_CLEAN_SESSION "clean_session"
 #define SANJI_INI_KEY_SUB_QOS "sub_qos"
 #define SANJI_INI_KEY_PUB_QOS "pub_qos"
+#define SANJI_INI_KEY_CLIENT_ID "client_id"
 #define SANJI_INI_KEY_USERNAME "username"
 #define SANJI_INI_KEY_PASSWORD "password"
 #define SANJI_INI_KEY_REFRESH_INTERVAL "refresh_interval"
+#define SANJI_INI_KEY_LOCAL_ID "local_id"
 #define SANJI_INI_KEY_MOSQ_DEBUG "mosq_debug"
 #define SANJI_INI_VALUE_LEN 128
 #define SANJI_DEFAULT_HOST "127.0.0.1"
@@ -88,7 +90,6 @@ extern "C" {
  */
 struct sanji_userdata {
 	char client_id[SANJI_ID_LEN];
-	char local_id[SANJI_LOCAL_ID_LEN];
 	char local_id_topic[SANJI_TOPIC_MAX_LEN];
 	char **topics;
 	int topic_count;
@@ -112,11 +113,13 @@ struct sanji_config {
 	bool clean_session;
 	int sub_qos;
 	int pub_qos;
+	char *client_id;
 	char *username;
 	char *password;
 	/* sanji controller */
 	int refresh_interval;
 	/* misc */
+	char *local_id;
 	char *config_file;
 	bool foreground;
 	bool mosq_debug;

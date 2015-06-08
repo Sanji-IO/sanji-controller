@@ -1,3 +1,16 @@
+sanji-controller (1.0.0-2) unstable; urgency=low
+
+  * Using config file and option arguments instead of environment variable
+    for local id.
+
+ -- Aeluin Chen <aeluin.chen@moxa.com>  Mon, 08 Jun 2015 17:02:35 +0800
+
+sanji-controller (1.0.0-1) unstable; urgency=low
+
+  * Sleep longer for preventing infinity reconnect.
+
+ -- YuLun Shih <shih@yulun.me>  Tue, 26 May 2015 17:07:51 +0800
+
 sanji-controller (1.0.0) unstable; urgency=low
 
   * Initial Release.

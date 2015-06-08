@@ -82,8 +82,10 @@ void sanji_print_usage(void)
 	printf("sanji_controller version %s.\n", SANJI_VERSION);
 	printf("Usage: sanji_controller [-H host] [-p port] [-r retry] ...\n");
 	printf("                        [-k keepalive] [-C] [-q sub_qos] [-Q pub_qos]\n");
+	printf("                        [-I client id]\n");
 	printf("                        [-u username] [-P password]\n");
 	printf("                        [-i refresh_interval]\n");
+	printf("                        [-L local id]\n");
 	printf("                        [-c config_file] [-f] [-d]\n");
 	printf("       sanji_controller [-h]\n\n");
 	printf(" -H : mqtt host to connect to. Defaults to '%s'.\n", SANJI_DEFAULT_HOST);
@@ -93,9 +95,11 @@ void sanji_print_usage(void)
 	printf(" -C : disable 'clean session'.\n");
 	printf(" -q : quality of service level to use for the subscription. Defaults to %d.\n", SANJI_DEFAULT_SUB_QOS);
 	printf(" -Q : quality of service level to use for the publication. Defaults to %d.\n", SANJI_DEFAULT_PUB_QOS);
+	printf(" -I : provide the client id (requires MQTT 3.1 broker). Default to %s\n", SANJI_ID_SUFFIX);
 	printf(" -u : provide a username (requires MQTT 3.1 broker)\n");
 	printf(" -P : provide a password (requires MQTT 3.1 broker)\n");
 	printf(" -i : sanji session refresh interval in ms. Defualts to %d.\n", SANJI_DEFAULT_REFRESH_INTERVAL);
+	printf(" -L : provide a local id.\n");
 	printf(" -c : specify the sanji controller config file. Defaults to '%s'\n", SANJI_DEFAULT_CONFIG_FILE);
 	printf(" -f : run in foreground.\n");
 	printf(" -d : enable mosquitto debug messages.\n");
@@ -106,7 +110,7 @@ int sanji_get_cmdline_options(int argc, char *argv[], struct sanji_config *confi
 {
 	int c;
 
-	while ((c = getopt(argc, argv, ":H:p:r:k:Cq:Q:u:P:i:c:fdh")) != -1) {
+	while ((c = getopt(argc, argv, ":H:p:r:k:Cq:Q:I:u:P:i:L:c:fdh")) != -1) {
 		switch (c) {
 		case 'H':
 			if (strlen(optarg) >= SANJI_IP_LEN) {
@@ -135,6 +139,10 @@ int sanji_get_cmdline_options(int argc, char *argv[], struct sanji_config *confi
 		case 'Q':
 			config->pub_qos = atoi(optarg);
 			break;
+		case 'I':
+			config->client_id = calloc(strlen(optarg) + 1, sizeof(char));
+			strcpy(config->client_id, optarg);
+			break;
 		case 'u':
 			config->username = calloc(strlen(optarg) + 1, sizeof(char));
 			strcpy(config->username, optarg);
@@ -150,6 +158,10 @@ int sanji_get_cmdline_options(int argc, char *argv[], struct sanji_config *confi
 			config->config_file = realloc(config->config_file, (strlen(optarg) + 1) * sizeof(char));
 			memset(config->config_file, '\0', (strlen(optarg) + 1) * sizeof(char));
 			strcpy(config->config_file, optarg);
+			break;
+		case 'L':
+			config->local_id = calloc(strlen(optarg) + 1, sizeof(char));
+			strcpy(config->local_id, optarg);
 			break;
 		case 'f':
 			config->foreground = true;
@@ -209,6 +221,12 @@ int sanji_load_config_file(struct sanji_config *config)
 	if (!ini_findkey(ini, SANJI_INI_SECTION_GLOBAL, SANJI_INI_KEY_PUB_QOS, value, SANJI_INI_VALUE_LEN)) {
 		config->pub_qos = atoi(value);
 	}
+	if (!ini_findkey(ini, SANJI_INI_SECTION_GLOBAL, SANJI_INI_KEY_CLIENT_ID, value, SANJI_INI_VALUE_LEN)) {
+		if (strlen(value) > 0) {
+			config->client_id = calloc(strlen(value) + 1, sizeof(char));
+			strcpy(config->client_id, value);
+		}
+	}
 	if (!ini_findkey(ini, SANJI_INI_SECTION_GLOBAL, SANJI_INI_KEY_USERNAME, value, SANJI_INI_VALUE_LEN)) {
 		if (strlen(value) > 0) {
 			config->username = calloc(strlen(value) + 1, sizeof(char));
@@ -223,6 +241,12 @@ int sanji_load_config_file(struct sanji_config *config)
 	}
 	if (!ini_findkey(ini, SANJI_INI_SECTION_GLOBAL, SANJI_INI_KEY_REFRESH_INTERVAL, value, SANJI_INI_VALUE_LEN)) {
 		config->refresh_interval = atoi(value);
+	}
+	if (!ini_findkey(ini, SANJI_INI_SECTION_GLOBAL, SANJI_INI_KEY_LOCAL_ID, value, SANJI_INI_VALUE_LEN)) {
+		if (strlen(value) > 0) {
+			config->local_id = calloc(strlen(value) + 1, sizeof(char));
+			strcpy(config->local_id, value);
+		}
 	}
 	if (!ini_findkey(ini, SANJI_INI_SECTION_GLOBAL, SANJI_INI_KEY_MOSQ_DEBUG, value, SANJI_INI_VALUE_LEN)) {
 		config->mosq_debug = strcmp(value, "true") ? false : true;
@@ -275,11 +299,13 @@ void sanji_config_dump(struct sanji_config *config)
 	fprintf(stderr, "\tclean_session = %s\n", config->clean_session ? "true" : "false");
 	fprintf(stderr, "\tsub_qos = %d\n", config->sub_qos);
 	fprintf(stderr, "\tpub_qos = %d\n", config->pub_qos);
+	fprintf(stderr, "\tclient_id = %s\n", config->client_id ? config->client_id : SANJI_ID_SUFFIX);
 	fprintf(stderr, "\tusername = %s\n", config->username ? config->username : "");
 	fprintf(stderr, "\tpassword = %s\n", config->password ? config->password : "");
 	/* controller */
 	fprintf(stderr, "\trefresh_interval = %d\n", config->refresh_interval);
 	/* misc */
+	fprintf(stderr, "\tlocal_id = %s\n", config->local_id ? config->local_id : "");
 	fprintf(stderr, "\tconfig_file = '%s'\n", config->config_file);
 	fprintf(stderr, "\tforeground = %s\n", config->foreground ? "true" : "false");
 	fprintf(stderr, "\tmosq_debug = %s\n", config->mosq_debug ? "true" : "false");
@@ -311,6 +337,10 @@ int sanji_validate_configs(struct sanji_config *config)
 		fprintf(stderr, "ERROR: Invalid refresh_interval given: %d\n", config->refresh_interval);
 		return 1;
 	}
+	if (config->local_id && strlen(config->local_id) > SANJI_LOCAL_ID_LEN) {
+		fprintf(stderr, "ERROR: Invalid local id length: %d (<= %d)\n", (int)strlen(config->local_id), SANJI_LOCAL_ID_LEN);
+		return 1;
+	}
 	if (config->password && !config->username) {
 		fprintf(stderr, "WARNING: Not using password since username not set.\n");
 	}
@@ -321,14 +351,16 @@ int sanji_validate_configs(struct sanji_config *config)
 void sanji_config_free(struct sanji_config *config)
 {
 	if (config) {
+		if (config->client_id) free(config->client_id);
 		if (config->username) free(config->username);
 		if (config->password) free(config->password);
+		if (config->local_id) free(config->local_id);
 		if (config->config_file) free(config->config_file);
 		free(config);
 	}
 }
 
-struct sanji_userdata *sanji_userdata_init()
+struct sanji_userdata *sanji_userdata_init(struct sanji_config *config)
 {
 	struct sanji_userdata *ud;
 
@@ -338,28 +370,29 @@ struct sanji_userdata *sanji_userdata_init()
 		return NULL;
 	}
 
-	/* get local id */
-	char *LOCAL_ID = getenv("LOCAL_ID");
-
-	/* clear local_id_topic */
-	memset(ud->local_id_topic, '\0', SANJI_TOPIC_MAX_LEN);
-
 	/* set client id */
-	sprintf(ud->client_id, SANJI_ID_SUFFIX);
+	if (config->client_id)
+		sprintf(ud->client_id, "%s", config->client_id);
+	else
+		sprintf(ud->client_id, SANJI_ID_SUFFIX);
+
+	/* clear client_id_topic */
+	memset(ud->local_id_topic, '\0', SANJI_TOPIC_MAX_LEN);
 
 	/* set topic to be listened */
 	ud->topic_count++;
 	ud->topics = realloc(ud->topics, ud->topic_count * sizeof(char *));
 	ud->topics[ud->topic_count - 1] = SANJI_CONTROLLER_TOPIC;
-	if (LOCAL_ID != NULL) {
-		
-		/* overwrite client_id */
-		sprintf(ud->client_id, "%s-%s", LOCAL_ID, SANJI_ID_SUFFIX);
+	if (config->local_id != NULL) {
 
+		/* overwrite client_id */
+		if (config->client_id == NULL)
+			sprintf(ud->client_id, "%s-%s", config->local_id, SANJI_ID_SUFFIX);
+		
 		/* set /{local_id}/SANJI_CONTROLLER_TOPIC topic */
 		ud->topic_count++;
 		ud->topics = realloc(ud->topics, ud->topic_count * sizeof(char *));
-		sprintf(ud->local_id_topic, "/%s%s", LOCAL_ID, SANJI_CONTROLLER_TOPIC);
+		sprintf(ud->local_id_topic, "/%s%s", config->local_id, SANJI_CONTROLLER_TOPIC);
 		ud->topics[ud->topic_count - 1] = ud->local_id_topic;
 	}
 	ud->topic_count++;
@@ -2346,7 +2379,7 @@ int main(int argc, char *argv[])
 #endif
 
 	/* init userdata */
-	ud = sanji_userdata_init();
+	ud = sanji_userdata_init(config);
 	if (!ud) {
 		fprintf(stderr, "ERROR: Init sanji user data failed.\n");
 		sanji_config_free(config);
@@ -2441,9 +2474,9 @@ int main(int argc, char *argv[])
 		}
 
 		if (sanji_run && rc) {
-			fprintf(stderr, "SANJI: reconnect to server\n");
+			fprintf(stderr, "SANJI: reconnect to server: %d\n", rc);
+			sleep(1);
 			mosquitto_reconnect(mosq);
-			sleep(5);
 		}
 	}
 
