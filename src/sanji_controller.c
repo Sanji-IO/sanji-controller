@@ -2475,7 +2475,7 @@ int main(int argc, char *argv[])
 
 		if (sanji_run && rc) {
 			fprintf(stderr, "SANJI: reconnect to server: %d\n", rc);
-			sleep(1);
+			sleep(5);
 			mosquitto_reconnect(mosq);
 		}
 	}
