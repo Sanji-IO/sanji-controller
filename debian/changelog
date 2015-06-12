@@ -1,4 +1,16 @@
-sanji-controller (1.0.0-2) unstable; urgency=low
+sanji-controller (1.0.1-3) unstable; urgency=low
+
+  * Sleep more longer (reconnect).
+
+ -- Aeluin Chen <aeluin.chen@moxa.com>  Fri, 12 Jun 2015 15:45:17 +0800
+
+sanji-controller (1.0.1-2) unstable; urgency=low
+
+  * Remove "-controller" from client id if using local id.
+
+ -- Aeluin Chen <aeluin.chen@moxa.com>  Tue, 09 Jun 2015 15:30:58 +0800
+
+sanji-controller (1.0.1-1) unstable; urgency=low
 
   * Using config file and option arguments instead of environment variable
     for local id.

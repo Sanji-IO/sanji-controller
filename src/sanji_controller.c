@@ -387,7 +387,7 @@ struct sanji_userdata *sanji_userdata_init(struct sanji_config *config)
 
 		/* overwrite client_id */
 		if (config->client_id == NULL)
-			sprintf(ud->client_id, "%s-%s", config->local_id, SANJI_ID_SUFFIX);
+			sprintf(ud->client_id, "%s", config->local_id);
 		
 		/* set /{local_id}/SANJI_CONTROLLER_TOPIC topic */
 		ud->topic_count++;
