@@ -34,7 +34,7 @@ extern "C" {
 #define SANJI_CONTROLLER_TOPIC "/controller"
 #define SANJI_CONTROLLER_TOPIC_LEN 11
 #define SANJI_TOPIC_MAX_LEN 256
-#define SANJI_LOCAL_ID_LEN MOSQ_MQTT_ID_MAX_LENGTH - SANJI_ID_SUFFIX_LEN
+#define SANJI_LOCAL_ID_LEN MOSQ_MQTT_ID_MAX_LENGTH
 
 
 /* build-in model topics and resources */
