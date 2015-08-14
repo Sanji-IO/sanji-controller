@@ -3,7 +3,7 @@
 # Provides:          sanji-controller
 # Required-Start:    $remote_fs $syslog $network
 # Required-Stop:     $remote_fs $syslog $network
-# Should-Start:      bootmisc gpsd gpsc
+# Should-Start:      bootmisc
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
 # Short-Description: Controller of Sanji framework
@@ -12,11 +12,12 @@
 
 SANJI_CONTROLLER=/usr/bin/sanji-controller
 SANJI_CONFIG=/etc/sanji-controller.conf
-SANJI_OPTIONS=""
+SANJI_OPTIONS="-f"
 
 case "$1" in
 start)
-	${SANJI_CONTROLLER} ${SANJI_OPTIONS} -c ${SANJI_CONFIG}
+	start-stop-daemon --start --quiet --oknodo -b --exec \
+		${SANJI_CONTROLLER} -- ${SANJI_OPTIONS} -c ${SANJI_CONFIG}
 	;;
 stop)
 	killall ${SANJI_CONTROLLER}
