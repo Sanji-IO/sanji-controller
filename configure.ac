@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
-AC_INIT([sanji-controller], [1.0], [aeluin.chen@moxa.com])
+AC_INIT([sanji-controller], [1.0.1], [aeluin.chen@moxa.com])
 AM_INIT_AUTOMAKE([1.11 foreign])
 AC_CONFIG_SRCDIR([src/sanji_controller.c])
 AC_CONFIG_HEADERS([config.h])
