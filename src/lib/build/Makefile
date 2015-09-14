@@ -8,15 +8,15 @@ CFLAGS += -DDEBUG
 endif
 
 SRCS = \
-       crc16.c \
-       daemonize.c \
-       dt.c \
-       time_util.c \
-       lock.c \
-	   pid.c \
-       text_util.c \
-	   strext.c \
-	   random_util.c
+	crc16.c \
+	daemonize.c \
+	dt.c \
+	time_util.c \
+	lock.c \
+	pid.c \
+	text_util.c \
+	strext.c \
+	random_util.c
 
 OBJS = $(SRCS:.c=.o)
 
