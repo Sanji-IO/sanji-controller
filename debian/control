@@ -7,7 +7,6 @@ Section: libs
 Homepage: http://www.moxa.com
 #Vcs-Git: git@github.com:Sanji-IO/sanji-controller.git
 #Vcs-Browser: 
-X-Python-Version: >= 2.5
 
 Package: sanji-controller
 Section: libs
